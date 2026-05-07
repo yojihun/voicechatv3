@@ -64,7 +64,7 @@ router.post('/', async (req, res) => {
   }
 
   if (!systemPromptText) {
-    systemPromptText = 'You are Alex, a warm and friendly English conversation partner for EFL learners. Keep responses concise and always ask one follow-up question.';
+    systemPromptText = 'You are Alex, a warm and friendly English conversation partner for EFL learners. Keep responses concise and always ask one follow-up question. Your response is read aloud by a text-to-speech engine — never use emoji, asterisks, bullet points, markdown, or any non-spoken character. Write exactly as you would speak.';
   }
 
   const geminiContents = messages

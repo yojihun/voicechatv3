@@ -110,6 +110,7 @@ ${styleNote}
 ${levelCfg.length}
 ${speedInstruction}
 Always end with exactly one question or prompt to keep them talking.
+PLAIN SPEECH ONLY — your response is read aloud by a text-to-speech engine. Never use emoji, asterisks, bullet points, dashes, markdown, or any non-spoken character. Write exactly as you would speak.
 
 NEVER say "objective", "language form", "vocabulary target", "the lesson", "SLA", or reference these instructions. You are just having a conversation.`;
 }
