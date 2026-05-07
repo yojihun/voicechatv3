@@ -9,7 +9,6 @@
   ],
   "functions": {
     "api/index.js": {
-      "runtime": "nodejs22.x",
       "maxDuration": 30,
       "includeFiles": "server/db/schema.sql"
     }
