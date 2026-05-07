@@ -7,6 +7,7 @@ export default function TeacherDashboard({ teacher, setTeacher, onBack }) {
   const [regName, setRegName] = useState('');
   const [regCode, setRegCode] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
   const [sessions, setSessions] = useState([]);
@@ -20,18 +21,20 @@ export default function TeacherDashboard({ teacher, setTeacher, onBack }) {
   }
 
   async function handleLogin(e) {
-    e.preventDefault(); setError('');
+    e.preventDefault(); setError(''); setLoading(true);
     try { const t = await teacherLogin(code); setTeacher(t); setView('tasks'); }
-    catch (e) { setError(e.message); }
+    catch (err) { setError(err.message); }
+    finally { setLoading(false); }
   }
 
   async function handleRegister(e) {
-    e.preventDefault(); setError('');
+    e.preventDefault(); setError(''); setLoading(true);
     try {
       await teacherRegister(regName, regCode);
       const t = await teacherLogin(regCode);
       setTeacher(t); setView('tasks');
-    } catch (e) { setError(e.message); }
+    } catch (err) { setError(err.message); }
+    finally { setLoading(false); }
   }
 
   async function handleViewSessions(task) {
@@ -56,7 +59,9 @@ export default function TeacherDashboard({ teacher, setTeacher, onBack }) {
           <input className="input" placeholder="Your access code" value={code}
             onChange={e => setCode(e.target.value)} autoFocus />
           {error && <p className="error">{error}</p>}
-          <button className="btn primary" type="submit">Enter</button>
+          <button className="btn primary" type="submit" disabled={loading}>
+            {loading ? 'Signing in…' : 'Enter'}
+          </button>
         </form>
         <p className="auth-alt">No code yet? <button className="link-btn" onClick={() => setView('register')}>Register</button></p>
       </div>
@@ -72,7 +77,9 @@ export default function TeacherDashboard({ teacher, setTeacher, onBack }) {
           <input className="input" placeholder="Your name" value={regName} onChange={e => setRegName(e.target.value)} />
           <input className="input" placeholder="Create an access code" value={regCode} onChange={e => setRegCode(e.target.value)} />
           {error && <p className="error">{error}</p>}
-          <button className="btn primary" type="submit">Create</button>
+          <button className="btn primary" type="submit" disabled={loading}>
+            {loading ? 'Creating…' : 'Create'}
+          </button>
         </form>
       </div>
     </div>

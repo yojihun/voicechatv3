@@ -14,9 +14,10 @@ const chatRoute = require('./routes/chat');
 const app = express();
 const PORT = process.env.PORT || 3002;
 
-const allowedOrigin = process.env.CLIENT_ORIGIN
-  || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:5173');
-app.use(cors({ origin: allowedOrigin }));
+// On Vercel the deployment URL differs from the alias, so allow the configured
+// origin or fall back to '*' (API keys protect the routes anyway).
+const corsOrigin = process.env.CLIENT_ORIGIN || (process.env.VERCEL ? '*' : 'http://localhost:5173');
+app.use(cors({ origin: corsOrigin }));
 app.use(express.json());
 
 app.use('/api/teachers', teacherRoutes);
