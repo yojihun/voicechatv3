@@ -11,7 +11,6 @@ export default function VoiceChat({ session, onEnd }) {
   const [error, setError] = useState('');
   const [screen, setScreen] = useState('chat');         // chat|loading|feedback
   const [feedback, setFeedback] = useState(null);
-  const [lang, setLang] = useState('en');
 
   const [showSuggestion, setShowSuggestion] = useState(false);
 
@@ -177,52 +176,44 @@ export default function VoiceChat({ session, onEnd }) {
   );
 
   if (screen === 'feedback') {
-    const hasKorean = !!feedback?.overall_ko;
-    const ko = lang === 'ko' && hasKorean;
     return (
       <div className="feedback-page">
         <div className="feedback-header">
-          <h2>Session Feedback</h2>
+          <h2>학습 피드백</h2>
           <p className="feedback-student">{studentName}</p>
-          {hasKorean && (
-            <div className="feedback-lang-toggle">
-              <button className={`chip ${!ko ? 'active' : ''}`} onClick={() => setLang('en')}>English</button>
-              <button className={`chip ${ko ? 'active' : ''}`} onClick={() => setLang('ko')}>한국어</button>
-            </div>
-          )}
         </div>
 
         {feedback?.overall && (
           <div className="feedback-overall">
             <span className="material-symbols-outlined fill feedback-star">star</span>
-            <p>{ko ? feedback.overall_ko : feedback.overall}</p>
+            <p>{feedback.overall}</p>
           </div>
         )}
 
         {feedback?.sentences?.length > 0 && (
           <div className="feedback-sentences">
-            <h3>{ko ? '내가 한 말' : 'What you said'}</h3>
+            <h3>내가 한 말</h3>
             {feedback.sentences.map((s, i) => (
               <div key={i} className="feedback-item">
                 <div className="feedback-original">
-                  <span className="feedback-label">{ko ? '내 말' : 'You said'}</span>
+                  <span className="feedback-label">내 말</span>
                   <p className="feedback-quote">"{s.original}"</p>
                 </div>
                 {s.what_worked && (
                   <div className="feedback-row positive">
                     <span className="material-symbols-outlined fill feedback-icon">check_circle</span>
-                    <p>{ko && s.what_worked_ko ? s.what_worked_ko : s.what_worked}</p>
+                    <p>{s.what_worked}</p>
                   </div>
                 )}
                 {s.needs_improvement && (
                   <div className="feedback-row improve">
                     <span className="material-symbols-outlined fill feedback-icon">lightbulb</span>
-                    <p>{ko && s.needs_improvement_ko ? s.needs_improvement_ko : s.needs_improvement}</p>
+                    <p>{s.needs_improvement}</p>
                   </div>
                 )}
                 {s.corrected && (
                   <div className="feedback-corrected">
-                    <span className="feedback-label">{ko ? '이렇게 말해보세요' : 'Try saying'}</span>
+                    <span className="feedback-label">이렇게 말해보세요</span>
                     <p className="feedback-corrected-text">"{s.corrected}"</p>
                   </div>
                 )}
@@ -233,7 +224,7 @@ export default function VoiceChat({ session, onEnd }) {
 
         <button className="btn primary feedback-done-btn" onClick={onEnd}>
           <span className="material-symbols-outlined">home</span>
-          {ko ? '홈으로' : 'Back to Home'}
+          홈으로
         </button>
       </div>
     );
