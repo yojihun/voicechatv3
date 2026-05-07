@@ -1,5 +1,5 @@
 const express = require('express');
-const db = require('../db/database');
+const { db } = require('../db/database');
 const { buildSystemPrompt } = require('../utils/promptBuilder');
 const router = express.Router();
 
@@ -17,14 +17,16 @@ router.post('/', async (req, res) => {
 
   if (session_id) {
     try {
-      const row = db.prepare(`
-        SELECT s.student_name, s.level, s.interests, s.learning_style, s.outline,
-               t.title, t.topic, t.objectives, t.vocabulary, t.language_forms,
-               t.persona_name, t.persona_description
-        FROM sessions s
-        JOIN tasks t ON t.id = s.task_id
-        WHERE s.id = ?
-      `).get(session_id);
+      const dbResult = await db.execute({
+        sql: `SELECT s.student_name, s.level, s.interests, s.learning_style, s.outline,
+                     t.title, t.topic, t.objectives, t.vocabulary, t.language_forms,
+                     t.persona_name, t.persona_description
+              FROM sessions s
+              JOIN tasks t ON t.id = s.task_id
+              WHERE s.id = ?`,
+        args: [session_id],
+      });
+      const row = dbResult.rows[0] ?? null;
 
       if (row) {
         level = row.level || 'intermediate';

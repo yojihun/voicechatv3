@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 
+const { ensureReady } = require('./db/database');
 const teacherRoutes = require('./routes/teachers');
 const sessionRoutes = require('./routes/sessions');
 const analyzeRoute = require('./routes/analyze');
@@ -19,6 +20,7 @@ const PORT = process.env.PORT || 3002;
 const corsOrigin = process.env.CLIENT_ORIGIN || (process.env.VERCEL ? '*' : 'http://localhost:5173');
 app.use(cors({ origin: corsOrigin }));
 app.use(express.json());
+app.use((req, res, next) => { ensureReady().then(() => next()).catch(next); });
 
 app.use('/api/teachers', teacherRoutes);
 app.use('/api', sessionRoutes);

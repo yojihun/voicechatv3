@@ -1,17 +1,19 @@
 const express = require('express');
-const db = require('../db/database');
+const { db } = require('../db/database');
 const router = express.Router();
 
 const GEMINI_API = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;
 
 router.post('/:sessionId', async (req, res) => {
-  const row = db.prepare(`
-    SELECT s.student_name, s.level, s.transcript,
-           t.language_forms, t.vocabulary
-    FROM sessions s
-    JOIN tasks t ON t.id = s.task_id
-    WHERE s.id = ?
-  `).get(req.params.sessionId);
+  const dbResult = await db.execute({
+    sql: `SELECT s.student_name, s.level, s.transcript,
+                 t.language_forms, t.vocabulary
+          FROM sessions s
+          JOIN tasks t ON t.id = s.task_id
+          WHERE s.id = ?`,
+    args: [req.params.sessionId],
+  });
+  const row = dbResult.rows[0] ?? null;
 
   if (!row) return res.status(404).json({ error: 'Session not found' });
 
@@ -99,7 +101,7 @@ Return ONLY valid JSON (no other text):
     if (!text) return res.status(502).json({ error: 'No response from AI' });
 
     const parsed = JSON.parse(text);
-    db.prepare('UPDATE sessions SET feedback = ? WHERE id = ?').run(JSON.stringify(parsed), req.params.sessionId);
+    await db.execute({ sql: 'UPDATE sessions SET feedback = ? WHERE id = ?', args: [JSON.stringify(parsed), req.params.sessionId] });
     res.json(parsed);
   } catch (e) {
     console.error('[Feedback] Error:', e.message);

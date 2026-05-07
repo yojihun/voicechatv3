@@ -1,21 +1,21 @@
 const express = require('express');
-const db = require('../db/database');
+const { db } = require('../db/database');
 const router = express.Router();
 
 const GEMINI_MODEL = 'gemini-2.5-flash';
 const GEMINI_API = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
-// Get all active tasks (for student task picker)
-router.get('/tasks', (req, res) => {
-  const tasks = db.prepare(`
-    SELECT t.id, t.title, t.topic, t.objectives, t.persona_name, t.teacher_id,
-           tc.name as teacher_name
-    FROM tasks t
-    JOIN teachers tc ON tc.id = t.teacher_id
-    WHERE t.active = 1
-    ORDER BY t.created_at DESC
-  `).all();
-  res.json(tasks.map(t => ({
+router.get('/tasks', async (req, res) => {
+  const result = await db.execute({
+    sql: `SELECT t.id, t.title, t.topic, t.objectives, t.persona_name, t.teacher_id,
+                 tc.name as teacher_name
+          FROM tasks t
+          JOIN teachers tc ON tc.id = t.teacher_id
+          WHERE t.active = 1
+          ORDER BY t.created_at DESC`,
+    args: [],
+  });
+  res.json(result.rows.map(t => ({
     ...t,
     objectives:     JSON.parse(t.objectives     || '[]'),
     vocabulary:     JSON.parse(t.vocabulary     || '[]'),
@@ -93,12 +93,12 @@ Return ONLY valid JSON, no other text:
   return JSON.parse(text);
 }
 
-// Start a session — generate conversation outline then return session info
 router.post('/start', async (req, res) => {
   const { task_id, student_name, level, interests, learning_style } = req.body;
   if (!task_id || !student_name) return res.status(400).json({ error: 'task_id and student_name required' });
 
-  const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(task_id);
+  const taskResult = await db.execute({ sql: 'SELECT * FROM tasks WHERE id = ?', args: [task_id] });
+  const task = taskResult.rows[0] ?? null;
   if (!task) return res.status(404).json({ error: 'Task not found' });
 
   const student = {
@@ -108,7 +108,6 @@ router.post('/start', async (req, res) => {
     learning_style,
   };
 
-  // Generate Gemini conversation outline
   let outline = null;
   try {
     outline = await generateOutline(task, student);
@@ -117,25 +116,24 @@ router.post('/start', async (req, res) => {
     console.error('[Session] Outline generation failed (will use fallback prompt):', e.message);
   }
 
-  const result = db.prepare(`
-    INSERT INTO sessions (task_id, student_name, level, interests, learning_style, outline)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(task_id, student_name, level, JSON.stringify(interests || []), learning_style, outline ? JSON.stringify(outline) : null);
+  const ins = await db.execute({
+    sql: 'INSERT INTO sessions (task_id, student_name, level, interests, learning_style, outline) VALUES (?, ?, ?, ?, ?, ?)',
+    args: [task_id, student_name, level, JSON.stringify(interests || []), learning_style, outline ? JSON.stringify(outline) : null],
+  });
 
   res.json({
-    session_id:    result.lastInsertRowid,
+    session_id:    Number(ins.lastInsertRowid),
     first_message: `Hi ${student_name}! I'm ${task.persona_name || 'Alex'}. Great to meet you!`,
     outline_beats: outline?.beats?.length ?? 0,
   });
 });
 
-// End a session — save transcript
-router.post('/:sessionId/end', (req, res) => {
+router.post('/:sessionId/end', async (req, res) => {
   const { conversation_id, transcript } = req.body;
-  db.prepare(`
-    UPDATE sessions SET conversation_id=?, transcript=?, ended_at=CURRENT_TIMESTAMP
-    WHERE id=?
-  `).run(conversation_id || null, JSON.stringify(transcript || []), req.params.sessionId);
+  await db.execute({
+    sql: 'UPDATE sessions SET conversation_id=?, transcript=?, ended_at=CURRENT_TIMESTAMP WHERE id=?',
+    args: [conversation_id || null, JSON.stringify(transcript || []), req.params.sessionId],
+  });
   res.json({ ok: true });
 });
 
