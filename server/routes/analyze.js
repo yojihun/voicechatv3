@@ -7,25 +7,45 @@ router.post('/', async (req, res) => {
   const { text } = req.body;
   if (!text?.trim()) return res.status(400).json({ error: 'text required' });
 
-  const prompt = `You are an expert EFL curriculum designer for Korean learners. Analyze this text and extract teaching materials for a conversation practice task.
+  const prompt = `You are an expert EFL curriculum designer for Korean secondary school students. Analyze this text and extract structured teaching materials aligned with the 2022 Korean National English Curriculum (2022 영어과 교육과정).
 
 TEXT:
 """
 ${text.slice(0, 3000)}
 """
 
-Extract the following:
-1. topic — a short phrase describing what this lesson is about (for English conversation practice)
-2. objectives — 3–4 things students should be able to DO after the lesson (use "can" statements: "Students can ask about...", "Students can describe...")
-3. vocabulary — 8–12 useful words or phrases from the text that Korean EFL students should learn (just the words/phrases, not definitions)
-4. language_forms — 3–5 example sentences showing the grammar patterns or conversational expressions students should practice. Give REAL example sentences, not grammar rule names. Example: "What do you do for a living?" not "present simple questions".
+Return ONLY valid JSON with these five fields:
 
-Return ONLY valid JSON:
+1. "title" — a short lesson title (3–6 words) suitable for a task card. Should sound natural and appealing to a Korean high school student. Example: "Planning a Birthday Celebration", "Talking About Daily Routines", "Describing a Favourite Place"
+
+2. "topic" — a concise phrase (1–5 words) naming the lesson topic
+
+3. "objectives" — exactly 3–4 learning objectives. Each must be a specific, functional can-do statement grounded in the 2022 English curriculum's 의사소통 기능 (communication functions). Rules:
+   - Use communication-function verbs: describe, explain, express (opinions/feelings/excitement), ask for and give (information), talk about (experiences/plans), compare, suggest, invite, narrate
+   - Name the linguistic vehicle (a grammar form or key vocabulary from this text) when it makes the objective more specific
+   - Format: "Students can [function verb] [specific content] [using X — only if it adds precision]"
+   - GOOD: "Students can describe a past event using past continuous (was/were V-ing)"
+   - GOOD: "Students can express anticipation or excitement using 'look forward to doing'"
+   - GOOD: "Students can ask for and give information about someone's birthday plans"
+   - BAD: "Students can talk about birthdays" (too vague — no function, no linguistic target)
+   - BAD: "Students can discuss restaurants" (generic, non-functional)
+
+4. "vocabulary" — 8–12 useful words or phrases from the text that Korean EFL students should actively learn. Just the items, no definitions.
+
+5. "language_forms" — exactly 2–4 grammar patterns or fixed expressions from the text, each written as a concise formula or pattern label — NOT a full sentence:
+   - "look forward to doing"  (NOT "She was looking forward to seeing her friends.")
+   - "past continuous (was/were + V-ing)"  (NOT "They were meeting at Mamma Mia's.")
+   - "be + adjective + to-infinitive"  (NOT "She was excited to see her friends.")
+   - "so + adjective + that-clause"  (NOT "He was so tired that he fell asleep.")
+   Only include patterns that naturally arise in conversation and are worth explicitly practising.
+
+Return ONLY valid JSON, no other text:
 {
+  "title": "...",
   "topic": "...",
   "objectives": ["Students can ...", "Students can ..."],
   "vocabulary": ["word or phrase", "another phrase"],
-  "language_forms": ["Example sentence.", "Another example sentence."]
+  "language_forms": ["pattern formula", "another pattern"]
 }`;
 
   try {
@@ -37,7 +57,7 @@ Return ONLY valid JSON:
         generationConfig: {
           responseMimeType: 'application/json',
           temperature: 0.3,
-          maxOutputTokens: 1200,
+          maxOutputTokens: 1500,
           thinkingConfig: { thinkingBudget: 0 },
         },
       }),

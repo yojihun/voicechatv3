@@ -180,6 +180,7 @@ function NewTaskForm({ teacherId, onSave, onCancel }) {
       const result = await analyzeTaskText(aiText);
       setForm(f => ({
         ...f,
+        title:          result.title        || f.title,
         topic:          result.topic        || f.topic,
         objectives:     (result.objectives  || []).join('\n'),
         vocabulary:     (result.vocabulary  || []).join('\n'),
@@ -252,9 +253,9 @@ function NewTaskForm({ teacherId, onSave, onCancel }) {
           placeholder={"commute, daily routine, get up early\nwork from home, take a break"} />
       </label>
 
-      <label>Language Forms <span className="label-hint">(write example sentences, one per line)</span>
+      <label>Language Forms <span className="label-hint">(grammar patterns to practice, one per line)</span>
         <textarea className="input" rows={3} value={form.language_forms} onChange={set('language_forms')}
-          placeholder={"What do you do for a living?\nI usually wake up at 7 o'clock.\nHow long does it take to get to work?"} />
+          placeholder={"look forward to doing\npast continuous (was/were + V-ing)\nbe + adjective + to-infinitive"} />
       </label>
 
       <div className="form-actions">
