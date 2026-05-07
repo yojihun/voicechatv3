@@ -2,12 +2,12 @@
   "name": "voicechatv3-server",
   "version": "1.0.0",
   "main": "index.js",
-  "engines": { "node": ">=22.5.0" },
   "scripts": {
-    "dev": "node --watch --disable-warning=ExperimentalWarning index.js",
-    "start": "node --disable-warning=ExperimentalWarning index.js"
+    "dev": "node --watch index.js",
+    "start": "node index.js"
   },
   "dependencies": {
+    "better-sqlite3": "^11.7.0",
     "cors": "^2.8.6",
     "dotenv": "^16.4.5",
     "express": "^5.0.1",
