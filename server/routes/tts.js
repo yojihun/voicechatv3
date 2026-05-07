@@ -3,13 +3,15 @@ const router = express.Router();
 
 const TTS_API = 'https://api.elevenlabs.io/v1/text-to-speech';
 
-// speed string → ElevenLabs speed value
-const SPEED = { slow: 0.75, normal: 1.0, fast: 1.2 };
+// speed: numeric value (0.7–1.0) OR legacy string key
+const SPEED = { slow: 0.75, normal: 0.9, fast: 1.0 };
 
 router.post('/', async (req, res) => {
-  const { text, voice_id, speed = 'normal' } = req.body;
+  const { text, voice_id, speed = 0.9 } = req.body;
   if (!text) return res.status(400).json({ error: 'text required' });
   if (!voice_id) return res.status(400).json({ error: 'voice_id required' });
+
+  const speedVal = typeof speed === 'number' ? speed : (SPEED[speed] ?? 0.9);
 
   try {
     const elevenRes = await fetch(`${TTS_API}/${voice_id}/stream`, {
@@ -22,7 +24,7 @@ router.post('/', async (req, res) => {
         text,
         model_id: 'eleven_flash_v2_5',
         voice_settings: {
-          speed: SPEED[speed] ?? 1.0,
+          speed: speedVal,
           stability: 0.5,
           similarity_boost: 0.8,
         },

@@ -45,14 +45,15 @@ Task: Select UP TO 3 utterances that are most worth commenting on. Prioritise:
 2. Utterances with notable grammar or phrasing (correct OR incorrect)
 3. Utterances that use target vocabulary
 
-For each selected utterance give honest, encouraging feedback:
-- what_worked: find something genuinely positive — effort, vocabulary choice, meaning, structure, fluency. Even if the sentence is wrong, praise the attempt.
-- needs_improvement: ONE specific, clear correction (null if the sentence is already correct or near-correct)
-- corrected: the natural correct/improved version (null if already correct)${needsKorean ? `
+For each selected utterance give honest, balanced feedback:
+- what_worked: find something genuinely positive — effort, vocabulary choice, meaning, structure, fluency.
+  EXCEPTION: if the utterance is 3 words or fewer, a single word, or a one-syllable filler ("yeah", "ok", "um"), do NOT write positive feedback. Instead write: "This was very short — try to use a full sentence next time."
+- needs_improvement: ONE specific, actionable improvement — ALWAYS required (never null). Even for a good sentence, find a natural refinement: a more precise word, a more idiomatic phrasing, a grammar nuance. Something the student can actually learn from.
+- corrected: the natural correct/improved version (always provide this, even for mostly-correct sentences, showing the most natural native-speaker phrasing)${needsKorean ? `
 - what_worked_ko: Korean translation of what_worked
-- needs_improvement_ko: Korean translation of needs_improvement (null if needs_improvement is null)` : ''}
+- needs_improvement_ko: Korean translation of needs_improvement` : ''}
 
-Also write a 2-sentence overall encouragement. Be warm and motivating.${needsKorean ? ' Then translate it into Korean for overall_ko.' : ''}
+Also write a 2-sentence overall that (1) acknowledges genuine effort and (2) names ONE concrete thing to work on next time. Do not give empty praise — be specific and honest.${needsKorean ? ' Then translate it into Korean for overall_ko.' : ''}
 
 IMPORTANT: "original" and "corrected" must always be written in English only.
 
@@ -63,12 +64,12 @@ Return ONLY valid JSON (no other text):
       "original": "exact student utterance",
       "what_worked": "specific positive observation",${needsKorean ? `
       "what_worked_ko": "Korean translation of what_worked",` : ''}
-      "needs_improvement": "specific correction note, or null",${needsKorean ? `
-      "needs_improvement_ko": "Korean translation of needs_improvement, or null",` : ''}
-      "corrected": "improved version, or null"
+      "needs_improvement": "specific correction note — always required",${needsKorean ? `
+      "needs_improvement_ko": "Korean translation of needs_improvement",` : ''}
+      "corrected": "natural improved version — always required"
     }
   ],
-  "overall": "2-sentence warm encouragement for the student"${needsKorean ? `,
+  "overall": "2-sentence feedback: one acknowledging effort, one naming a concrete improvement goal"${needsKorean ? `,
   "overall_ko": "Korean translation of overall"` : ''}
 }`;
 

@@ -214,17 +214,21 @@ label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-w
 .level-cefr-tag { font-size: 11px; font-weight: 700; background: var(--primary-light); color: var(--primary); padding: 2px 8px; border-radius: 999px; }
 
 /* ── Voice picker ── */
-.voice-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.voice-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 .voice-card {
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
-  padding: 12px 8px; border-radius: var(--radius-md);
+  display: flex; flex-direction: row; align-items: center; gap: 10px;
+  padding: 10px 14px; border-radius: var(--radius-md);
   border: 1.5px solid var(--outline-variant); background: white;
-  cursor: pointer; transition: all 0.15s; text-align: center;
+  cursor: pointer; transition: all 0.15s; text-align: left;
 }
 .voice-card:hover { border-color: var(--primary); }
 .voice-card.active { border-color: var(--primary); background: var(--primary-light); }
+.voice-card-info { display: flex; flex-direction: column; gap: 2px; }
 .voice-name { font-size: 13px; font-weight: 700; }
 .voice-meta { font-size: 10px; color: var(--outline); }
+
+/* ── Speed percentage badge ── */
+.speed-pct-badge { margin-left: 8px; font-size: 11px; font-weight: 700; background: var(--primary-light); color: var(--primary); padding: 2px 8px; border-radius: 999px; }
 
 /* ── AI panel in task form ── */
 .task-form-header { display: flex; align-items: center; justify-content: space-between; }
@@ -280,6 +284,21 @@ label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-w
 
 .feedback-lang-toggle { display: flex; gap: 8px; justify-content: center; margin-top: 8px; }
 .feedback-done-btn { align-self: center; margin-top: 8px; }
+
+/* ── Silence suggestion bubble ── */
+.suggestion-bubble {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: #fffbeb; border: 1.5px solid #fde68a;
+  border-radius: var(--radius-md); padding: 10px 12px;
+  margin-bottom: 10px; animation: fadeIn 0.2s ease;
+}
+.suggestion-bubble .material-symbols-outlined { color: #d97706; font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+.suggestion-text { display: flex; flex-direction: column; gap: 2px; flex: 1; font-size: 13px; line-height: 1.5; }
+.suggestion-text strong { font-weight: 700; color: var(--on-surface); }
+.suggestion-text span { color: var(--on-surface-variant); }
+.suggestion-close { background: none; border: none; cursor: pointer; color: var(--outline); font-size: 14px; padding: 0 2px; line-height: 1; flex-shrink: 0; }
+.suggestion-close:hover { color: var(--on-surface); }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
 /* ── Teacher session feedback panel ── */
 .sf-wrap { border-top: 1px solid var(--outline-variant); margin-top: 10px; padding-top: 10px; }

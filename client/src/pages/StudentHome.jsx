@@ -10,13 +10,12 @@ const LEVELS = [
 ];
 
 const VOICES = [
-  { id: '21m00Tcm4TlvDq8ikWAM', name: 'Rachel', gender: 'female', accent: 'American',   age: 'young' },
-  { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Bella',  gender: 'female', accent: 'American',   age: 'soft' },
-  { id: 'pFZP5JQG7iQjIQuC4Bku', name: 'Lily',   gender: 'female', accent: 'British',    age: 'middle-aged' },
-  { id: 'cjVigY5qzO86Huf0OWal', name: 'Eric',   gender: 'male',   accent: 'American',   age: 'friendly' },
-  { id: 'TxGEqnHWrfWFTfGW9XjX', name: 'Josh',   gender: 'male',   accent: 'American',   age: 'young' },
-  { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam',   gender: 'male',   accent: 'American',   age: 'deep' },
-  { id: 'ZQe5CZNOzWyzPSCn5a3c', name: 'James',  gender: 'male',   accent: 'Australian', age: 'warm' },
+  { id: '21m00Tcm4TlvDq8ikWAM', name: 'Rachel',  gender: 'female', accent: 'American',   age: 'warm' },
+  { id: 'cjVigY5qzO86Huf0OWal', name: 'Eric',    gender: 'male',   accent: 'American',   age: 'friendly' },
+  { id: 'pFZP5JQG7iQjIQuC4Bku', name: 'Lily',    gender: 'female', accent: 'British',    age: 'expressive' },
+  { id: 'onwK4e9ZLuTAKqWW03F9', name: 'Daniel',  gender: 'male',   accent: 'British',    age: 'authoritative' },
+  { id: 'XrExE9yKIg1WjnnlVkGX', name: 'Matilda', gender: 'female', accent: 'Australian', age: 'warm' },
+  { id: 'ZQe5CZNOzWyzPSCn5a3c', name: 'James',   gender: 'male',   accent: 'Australian', age: 'calm' },
 ];
 
 const STYLES = [
@@ -33,7 +32,7 @@ export default function StudentHome({ onStartChat, onBack }) {
   const [selectedTask, setSelectedTask] = useState(null);
   const [levelIdx, setLevelIdx] = useState(2); // default: Intermediate
   const [voiceId, setVoiceId] = useState(VOICES[0].id);
-  const [speechSpeed, setSpeechSpeed] = useState('normal');
+  const [speechSpeed, setSpeechSpeed] = useState(0.9);
   const [interests, setInterests] = useState('');
   const [learningStyle, setLearningStyle] = useState('auditory');
   const [error, setError] = useState('');
@@ -45,7 +44,7 @@ export default function StudentHome({ onStartChat, onBack }) {
   }, []);
 
   useEffect(() => {
-    setSpeechSpeed(levelIdx <= 1 ? 'slow' : 'normal');
+    setSpeechSpeed(levelIdx <= 1 ? 0.75 : 0.9);
   }, [levelIdx]);
 
   async function handleStart() {
@@ -152,24 +151,35 @@ export default function StudentHome({ onStartChat, onBack }) {
                     className={`voice-card ${voiceId === v.id ? 'active' : ''}`}
                     onClick={() => setVoiceId(v.id)}
                   >
-                    <span className="material-symbols-outlined" style={{ fontSize: 22 }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 24, flexShrink: 0 }}>
                       {v.gender === 'female' ? 'face_3' : 'face'}
                     </span>
-                    <span className="voice-name">{v.name}</span>
-                    <span className="voice-meta">{v.accent} · {v.age}</span>
+                    <div className="voice-card-info">
+                      <span className="voice-name">{v.name}</span>
+                      <span className="voice-meta">{v.accent} · {v.age}</span>
+                    </div>
                   </button>
                 ))}
               </div>
             </div>
 
             <div className="profile-section">
-              <label className="profile-label">AI Speaking Speed</label>
-              <div className="chip-group">
-                {['slow', 'normal', 'fast'].map(s => (
-                  <button key={s} className={`chip ${speechSpeed === s ? 'active' : ''}`} onClick={() => setSpeechSpeed(s)}>
-                    {s.charAt(0).toUpperCase() + s.slice(1)}
-                  </button>
-                ))}
+              <label className="profile-label">
+                AI Speaking Speed
+                <span className="speed-pct-badge">{Math.round(speechSpeed * 100)}%</span>
+              </label>
+              <div className="level-slider-wrap">
+                <input
+                  type="range" min={0.7} max={1.0} step={0.025} value={speechSpeed}
+                  onChange={e => setSpeechSpeed(Number(e.target.value))}
+                  className="level-slider"
+                  style={{ '--val': `${((speechSpeed - 0.7) / 0.3) * 100}%` }}
+                />
+                <div className="level-track">
+                  <span className={`level-tick ${speechSpeed <= 0.79 ? 'active' : ''}`}>Slow</span>
+                  <span className={`level-tick ${speechSpeed >= 0.84 && speechSpeed <= 0.96 ? 'active' : ''}`}>Normal</span>
+                  <span className={`level-tick ${speechSpeed >= 0.97 ? 'active' : ''}`}>Fast</span>
+                </div>
               </div>
             </div>
 

@@ -2,6 +2,7 @@
   "name": "voicechatv3-server",
   "version": "1.0.0",
   "main": "index.js",
+  "engines": { "node": ">=22.5.0" },
   "scripts": {
     "dev": "node --watch --disable-warning=ExperimentalWarning index.js",
     "start": "node --disable-warning=ExperimentalWarning index.js"

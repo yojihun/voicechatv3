@@ -13,12 +13,15 @@ export default function VoiceChat({ session, onEnd }) {
   const [feedback, setFeedback] = useState(null);
   const [lang, setLang] = useState('en');
 
+  const [showSuggestion, setShowSuggestion] = useState(false);
+
   const messagesRef = useRef([]);    // [{role:'user'|'assistant', content}]
   const transcriptRef = useRef([]);  // [{role:'user'|'agent', message}]
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const currentAudioRef = useRef(null);
   const transcriptEndRef = useRef(null);
+  const silenceCountRef = useRef(0);
 
   const personaName = task?.persona_name || 'Alex';
 
@@ -105,7 +108,21 @@ export default function VoiceChat({ session, onEnd }) {
       if (!sttRes.ok) throw new Error('Transcription failed');
       const { text: userText } = await sttRes.json();
 
-      if (!userText?.trim()) { setStatus('idle'); return; }
+      if (!userText?.trim()) {
+        silenceCountRef.current += 1;
+        if (silenceCountRef.current >= 2) setShowSuggestion(true);
+        setStatus('idle');
+        return;
+      }
+
+      const wordCount = userText.trim().split(/\s+/).length;
+      if (wordCount < 4) {
+        silenceCountRef.current += 1;
+        if (silenceCountRef.current >= 2) setShowSuggestion(true);
+      } else {
+        silenceCountRef.current = 0;
+        setShowSuggestion(false);
+      }
 
       const userEntry = { role: 'user', message: userText };
       messagesRef.current = [...messagesRef.current, { role: 'user', content: userText }];
@@ -166,7 +183,7 @@ export default function VoiceChat({ session, onEnd }) {
       <div className="feedback-page">
         <div className="feedback-header">
           <h2>Session Feedback</h2>
-          <p className="feedback-student">Great work, {studentName}!</p>
+          <p className="feedback-student">{studentName}</p>
           {hasKorean && (
             <div className="feedback-lang-toggle">
               <button className={`chip ${!ko ? 'active' : ''}`} onClick={() => setLang('en')}>English</button>
@@ -255,6 +272,16 @@ export default function VoiceChat({ session, onEnd }) {
       </div>
 
       <div className="vc-controls">
+        {showSuggestion && (
+          <div className="suggestion-bubble">
+            <span className="material-symbols-outlined fill">lightbulb</span>
+            <div className="suggestion-text">
+              <strong>Need a starter?</strong>
+              <span>Try: "I think…" · "In my opinion…" · "I'm not sure, but…" · "Can you say that again?"</span>
+            </div>
+            <button className="suggestion-close" onClick={() => setShowSuggestion(false)}>✕</button>
+          </div>
+        )}
         {error && <p className="error" style={{ textAlign: 'center', marginBottom: 8 }}>{error}</p>}
         <button
           className={`ptt-btn ${isRecording ? 'recording' : ''} ${isBusy ? 'busy' : ''}`}

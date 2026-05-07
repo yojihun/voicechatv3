@@ -2,7 +2,9 @@ const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
 const fs = require('fs');
 
-const DB_PATH = path.join(__dirname, 'voicechat.db');
+const DB_PATH = process.env.VERCEL
+  ? '/tmp/voicechat.db'
+  : path.join(__dirname, 'voicechat.db');
 const db = new DatabaseSync(DB_PATH);
 
 db.exec('PRAGMA journal_mode = WAL');

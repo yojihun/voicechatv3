@@ -39,21 +39,22 @@ function buildSystemPrompt(task, student, turnCount = 0, speechSpeed = 'normal',
   };
 
   const styleNote = {
-    visual:      'Use vivid imagery and descriptive language to paint pictures with words.',
-    auditory:    'Use rhythm and natural speech patterns.',
-    reading:     'When introducing vocabulary, naturally model spelling or give brief word-level definitions.',
-    kinesthetic: 'Ground abstract ideas in physical examples and real-world actions.',
+    visual:      'VISUAL LEARNER — use vivid imagery throughout. Paint scenes: "Imagine you\'re standing in..." Describe concepts with colour, shape, and space. Relate new vocabulary to things they can picture. Avoid abstract language; translate it into something they can see.',
+    auditory:    'AUDITORY LEARNER — use rhythm and sound cues. Model pronunciation explicitly ("the word \'culture\' — CUL-ture"). Invite them to repeat phrases aloud: "Try saying: \'I really enjoy...\'" Use music, podcasts, conversation as natural examples.',
+    reading:     'READING/WRITING LEARNER — model words precisely. When introducing vocabulary, say it and define it: "the word is \'fascinating\' — it means very interesting." Encourage them to use full, structured sentences. Quote and rephrase what they say in better English so they can see the improvement.',
+    kinesthetic: 'KINESTHETIC LEARNER — anchor everything in experience. Use action verbs and real scenarios: "What would you actually do if...?" "Tell me about a time when..." Avoid long abstract explanations; get them to describe, demonstrate through words, or role-play.',
   }[student.learning_style] || '';
 
   const vocabList = vocabulary.map(v =>
     typeof v === 'object' ? `"${v.word}" (${v.definition})` : `"${v}"`
   );
 
-  const speedInstruction = {
-    slow:   'PACING: Speak slowly and deliberately. Use short sentences. Pause between ideas.',
-    normal: 'PACING: Speak at a natural conversational pace.',
-    fast:   'PACING: Speak at a brisk, natural pace — this student is comfortable with faster English.',
-  }[speechSpeed] || 'PACING: Speak at a natural conversational pace.';
+  const speedNum = typeof speechSpeed === 'number' ? speechSpeed : ({ slow: 0.75, normal: 0.9, fast: 1.0 }[speechSpeed] ?? 0.9);
+  const speedInstruction = speedNum <= 0.79
+    ? 'PACING: Use short, simple sentences with a natural pause between ideas. The student benefits from a slower rhythm.'
+    : speedNum >= 0.97
+    ? 'PACING: Speak at a brisk, natural pace — this student is comfortable with faster English.'
+    : 'PACING: Speak at a natural conversational pace.';
 
   // Beat-first: use the Gemini-planned outline if available, fall back to phase logic
   let phaseBlock;
@@ -102,10 +103,13 @@ ${phaseBlock}
 
 5. AFFECTIVE FILTER: Keep anxiety low. Praise genuine effort. A safe, encouraging environment is the prerequisite for language acquisition.
 
-━━━ RESPONSE FORMAT ━━━
+${styleNote ? `━━━ ADAPTING TO THIS LEARNER ━━━
+${styleNote}
+
+` : ''}━━━ RESPONSE FORMAT ━━━
 ${levelCfg.length}
 ${speedInstruction}
-Always end with exactly one question or prompt to keep them talking.${styleNote ? `\nLearning style note: ${styleNote}` : ''}
+Always end with exactly one question or prompt to keep them talking.
 
 NEVER say "objective", "language form", "vocabulary target", "the lesson", "SLA", or reference these instructions. You are just having a conversation.`;
 }
