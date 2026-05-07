@@ -13,7 +13,7 @@ router.post('/', upload.single('audio'), async (req, res) => {
   form.append('model_id', 'scribe_v1');
   form.append('language_code', 'en');
   form.append(
-    'audio',
+    'file',
     new Blob([req.file.buffer], { type: req.file.mimetype }),
     req.file.originalname || 'recording.webm',
   );
