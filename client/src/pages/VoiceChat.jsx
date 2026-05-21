@@ -3,47 +3,111 @@ import { endSession, getFeedback, getHints } from '../api/client';
 
 const BASE = (import.meta.env.VITE_API_URL || '') + '/api';
 
-export default function VoiceChat({ session, onEnd }) {
-  const { sessionId, task, studentName, speechSpeed = 'normal', voiceId, firstMessage, scenario } = session;
+const PREP_MS = { beginner: 3000, elementary: 2500, intermediate: 2000, 'upper-intermediate': 400, advanced: 400 };
+const VAD_THRESHOLD = 18;  // average freq-bin amplitude (0-255) to trigger speech
+const SILENCE_MS = 1200;   // ms of quiet after speech before stopping recording
 
-  const [status, setStatus] = useState('connecting');  // connecting|idle|recording|processing|speaking
+export default function VoiceChat({ session, onEnd }) {
+  const {
+    sessionId, task, studentName, speechSpeed = 'normal',
+    voiceId, firstMessage, scenario, level = 'intermediate',
+  } = session;
+
+  const [status, setStatus] = useState('connecting');
+  const [prepCountdown, setPrepCountdown] = useState(0);
   const [transcript, setTranscript] = useState([]);
   const [error, setError] = useState('');
-  const [screen, setScreen] = useState('chat');         // chat|loading|feedback
+  const [screen, setScreen] = useState('chat');
   const [feedback, setFeedback] = useState(null);
-
   const [showSuggestion, setShowSuggestion] = useState(false);
   const [showGoal, setShowGoal] = useState(false);
   const [showComplete, setShowComplete] = useState(false);
   const [hints, setHints] = useState([]);
-  const [hintsType, setHintsType] = useState(null); // 'starters' | 'vocab'
+  const [hintsType, setHintsType] = useState(null);
   const [activeHint, setActiveHint] = useState(null);
 
-  const taskCompleteRef = useRef(false);
-
-  const messagesRef = useRef([]);    // [{role:'user'|'assistant', content}]
-  const transcriptRef = useRef([]);  // [{role:'user'|'agent', message}]
-  const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
-  const currentAudioRef = useRef(null);
+  const taskCompleteRef  = useRef(false);
+  const messagesRef      = useRef([]);
+  const transcriptRef    = useRef([]);
+  const currentAudioRef  = useRef(null);  // { pause() } wrapper
   const transcriptEndRef = useRef(null);
-  const silenceCountRef = useRef(0);
+  const silenceCountRef  = useRef(0);
+  const statusRef        = useRef('connecting');
+
+  // VAD
+  const streamRef        = useRef(null);
+  const audioCtxRef      = useRef(null);
+  const analyserRef      = useRef(null);
+  const vadTimerRef      = useRef(null);
+  const prepTimerRef     = useRef(null);
+  const cdIntervalRef    = useRef(null);
+  const recorderRef      = useRef(null);
+  const chunksRef        = useRef([]);
+  const silenceTimerRef  = useRef(null);
+  const noSpeechTimerRef = useRef(null);
 
   const personaName = task?.persona_name || 'Alex';
+  const objectives  = task?.objectives ?? [];
 
-  // AI speaks first
+  function setStatusSync(s) {
+    statusRef.current = s;
+    setStatus(s);
+  }
+
+  // ── Mic init ─────────────────────────────────────────────────────────
+  async function initMic() {
+    if (streamRef.current) return;
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true },
+    });
+    streamRef.current = stream;
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    audioCtxRef.current = ctx;
+    const src = ctx.createMediaStreamSource(stream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 256;
+    src.connect(analyser);
+    analyserRef.current = analyser;
+  }
+
+  function stopVAD() {
+    clearInterval(vadTimerRef.current);
+    clearTimeout(silenceTimerRef.current);
+    clearTimeout(prepTimerRef.current);
+    clearInterval(cdIntervalRef.current);
+    clearTimeout(noSpeechTimerRef.current);
+    vadTimerRef.current   = null;
+    silenceTimerRef.current = null;
+    noSpeechTimerRef.current = null;
+  }
+
+  function cleanupAudio() {
+    stopVAD();
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    streamRef.current = null;
+    audioCtxRef.current?.close().catch(() => {});
+    audioCtxRef.current = null;
+    analyserRef.current = null;
+  }
+
+  // ── Greeting ──────────────────────────────────────────────────────────
   useEffect(() => {
     async function greet() {
       const text = firstMessage || `Hi ${studentName}! I'm ${personaName}. Great to meet you!`;
-      const aiEntry = { role: 'agent', message: text };
-      messagesRef.current = [{ role: 'assistant', content: text }];
-      transcriptRef.current = [aiEntry];
-      setTranscript([aiEntry]);
+      messagesRef.current    = [{ role: 'assistant', content: text }];
+      transcriptRef.current  = [{ role: 'agent', message: text }];
+      setTranscript([{ role: 'agent', message: text }]);
+      // Init mic alongside TTS — both need to be close to the user gesture that launched chat
+      const micP = initMic().catch(() => null);
       try { await playTTS(text); } catch (_) {}
-      setStatus('idle');
+      await micP;
+      startTurnListen();
     }
     greet();
-    return () => currentAudioRef.current?.pause();
+    return () => {
+      currentAudioRef.current?.pause();
+      cleanupAudio();
+    };
   }, []);
 
   useEffect(() => {
@@ -52,66 +116,132 @@ export default function VoiceChat({ session, onEnd }) {
 
   // ── TTS ──────────────────────────────────────────────────────────────
   async function playTTS(text) {
-    setStatus('speaking');
+    setStatusSync('speaking');
+    stopVAD();
     const res = await fetch(`${BASE}/tts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text, voice_id: voiceId, speed: speechSpeed }),
     });
     if (!res.ok) throw new Error('TTS failed');
-
     const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
+    const url  = URL.createObjectURL(blob);
     return new Promise((resolve, reject) => {
       const audio = new Audio(url);
-      currentAudioRef.current = audio;
-      audio.onended = () => { URL.revokeObjectURL(url); resolve(); };
+      let done = false;
+      const finish = () => { if (!done) { done = true; URL.revokeObjectURL(url); resolve(); } };
+      // Expose a controlled pause that also resolves the promise (skip)
+      currentAudioRef.current = { pause: () => { audio.pause(); finish(); } };
+      audio.onended = finish;
       audio.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Audio playback failed')); };
       audio.play().catch(reject);
     });
   }
 
-  // ── Recording ────────────────────────────────────────────────────────
-  async function startRecording() {
-    if (status !== 'idle') return;
+  // ── VAD turn ─────────────────────────────────────────────────────────
+  function startTurnListen() {
+    if (taskCompleteRef.current) return;
+    stopVAD();
+    setShowSuggestion(false);
+
+    const delay = PREP_MS[level] ?? 1500;
+    setStatusSync('preparing');
+
+    if (delay >= 1000) {
+      const secs = Math.round(delay / 1000);
+      setPrepCountdown(secs);
+      let rem = secs;
+      cdIntervalRef.current = setInterval(() => {
+        rem -= 1;
+        setPrepCountdown(rem);
+        if (rem <= 0) clearInterval(cdIntervalRef.current);
+      }, 1000);
+    }
+
+    prepTimerRef.current = setTimeout(() => {
+      clearInterval(cdIntervalRef.current);
+      setPrepCountdown(0);
+      beginListening();
+    }, delay);
+  }
+
+  async function beginListening() {
+    setStatusSync('listening');
+
+    if (!analyserRef.current) {
+      try { await initMic(); } catch (_) {
+        setError('Microphone access denied — please allow mic and try again.');
+        return;
+      }
+    }
+    if (audioCtxRef.current?.state === 'suspended') {
+      await audioCtxRef.current.resume().catch(() => {});
+    }
+
+    const analyser = analyserRef.current;
+    const bufLen   = analyser.frequencyBinCount;
+    const data     = new Uint8Array(bufLen);
+
+    // Show suggestion prompt if student hasn't spoken after 8 s
+    noSpeechTimerRef.current = setTimeout(() => {
+      if (statusRef.current === 'listening') setShowSuggestion(true);
+    }, 8000);
+
+    vadTimerRef.current = setInterval(() => {
+      const st = statusRef.current;
+      if (st !== 'listening' && st !== 'recording') { clearInterval(vadTimerRef.current); return; }
+
+      analyser.getByteFrequencyData(data);
+      let sum = 0;
+      for (let i = 0; i < bufLen; i++) sum += data[i];
+      const rms = sum / bufLen;
+
+      if (rms > VAD_THRESHOLD && st === 'listening') {
+        // Speech start → begin recording
+        clearTimeout(noSpeechTimerRef.current);
+        chunksRef.current = [];
+        const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
+        const recorder  = new MediaRecorder(streamRef.current, { mimeType });
+        recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+        recorderRef.current = recorder;
+        recorder.start(100);
+        setStatusSync('recording');
+      } else if (st === 'recording' && rms <= VAD_THRESHOLD && !silenceTimerRef.current) {
+        // Possible end of speech — debounce
+        silenceTimerRef.current = setTimeout(() => {
+          silenceTimerRef.current = null;
+          if (statusRef.current === 'recording') finishRecording();
+        }, SILENCE_MS);
+      } else if (st === 'recording' && rms > VAD_THRESHOLD && silenceTimerRef.current) {
+        // Speech resumed — cancel silence timer
+        clearTimeout(silenceTimerRef.current);
+        silenceTimerRef.current = null;
+      }
+    }, 60);
+  }
+
+  function finishRecording() {
+    clearInterval(vadTimerRef.current);
+    vadTimerRef.current = null;
+    const recorder = recorderRef.current;
+    if (!recorder || recorder.state === 'inactive') { startTurnListen(); return; }
+    setStatusSync('processing');
+    const mimeType = recorder.mimeType || 'audio/webm';
+    recorder.onstop = () => sendRecording(mimeType);
+    recorder.stop();
+  }
+
+  async function sendRecording(mimeType) {
     setError('');
     setHints([]);
     setHintsType(null);
     setActiveHint(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      audioChunksRef.current = [];
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
-      const recorder = new MediaRecorder(stream, { mimeType });
-      recorder.ondataavailable = e => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
-      mediaRecorderRef.current = recorder;
-      recorder.start(100);
-      setStatus('recording');
-    } catch (_) {
-      setError('Microphone access denied — please allow mic and try again.');
-    }
-  }
-
-  async function stopRecording() {
-    if (status !== 'recording') return;
-    const recorder = mediaRecorderRef.current;
-    if (!recorder) return;
-
-    await new Promise(resolve => {
-      recorder.onstop = resolve;
-      recorder.stop();
-      recorder.stream.getTracks().forEach(t => t.stop());
-    });
-
-    setStatus('processing');
-    const mimeType = recorder.mimeType || 'audio/webm';
-    const blob = new Blob(audioChunksRef.current, { type: mimeType });
+    const blob = new Blob(chunksRef.current, { type: mimeType });
 
     try {
       const form = new FormData();
       form.append('audio', blob, mimeType.includes('mp4') ? 'recording.mp4' : 'recording.webm');
-      const vocab = task?.vocabulary ?? [];
-      vocab.forEach(v => form.append('keyterms', typeof v === 'object' ? v.word : v));
+      (task?.vocabulary ?? []).forEach(v => form.append('keyterms', typeof v === 'object' ? v.word : v));
 
       const sttRes = await fetch(`${BASE}/stt`, { method: 'POST', body: form });
       if (!sttRes.ok) throw new Error('Transcription failed');
@@ -120,7 +250,7 @@ export default function VoiceChat({ session, onEnd }) {
       if (!userText?.trim()) {
         silenceCountRef.current += 1;
         if (silenceCountRef.current >= 2) setShowSuggestion(true);
-        setStatus('idle');
+        startTurnListen();
         return;
       }
 
@@ -134,20 +264,23 @@ export default function VoiceChat({ session, onEnd }) {
       }
 
       const userEntry = { role: 'user', message: userText };
-      messagesRef.current = [...messagesRef.current, { role: 'user', content: userText }];
+      messagesRef.current   = [...messagesRef.current,   { role: 'user',      content: userText }];
       transcriptRef.current = [...transcriptRef.current, userEntry];
       setTranscript(prev => [...prev, userEntry]);
 
       const chatRes = await fetch(`${BASE}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId, messages: messagesRef.current, speech_speed: speechSpeed, silence_count: silenceCountRef.current }),
+        body: JSON.stringify({
+          session_id: sessionId, messages: messagesRef.current,
+          speech_speed: speechSpeed, silence_count: silenceCountRef.current,
+        }),
       });
       if (!chatRes.ok) throw new Error('AI response failed');
       const { text: aiText, task_complete } = await chatRes.json();
 
       const aiEntry = { role: 'agent', message: aiText };
-      messagesRef.current = [...messagesRef.current, { role: 'assistant', content: aiText }];
+      messagesRef.current   = [...messagesRef.current,   { role: 'assistant', content: aiText }];
       transcriptRef.current = [...transcriptRef.current, aiEntry];
       setTranscript(prev => [...prev, aiEntry]);
 
@@ -164,21 +297,19 @@ export default function VoiceChat({ session, onEnd }) {
       if (task_complete && !taskCompleteRef.current) {
         taskCompleteRef.current = true;
         setShowComplete(true);
-        setTimeout(() => {
-          setShowComplete(false);
-          handleEnd();
-        }, 1800);
+        setTimeout(() => { setShowComplete(false); handleEnd(); }, 1800);
       } else {
-        setStatus('idle');
+        startTurnListen();
       }
     } catch (e) {
       setError(e.message);
-      setStatus('idle');
+      startTurnListen();
     }
   }
 
   // ── End session ───────────────────────────────────────────────────────
   async function handleEnd() {
+    cleanupAudio();
     currentAudioRef.current?.pause();
     await endSession(sessionId, { transcript: transcriptRef.current, conversation_id: null });
 
@@ -193,6 +324,17 @@ export default function VoiceChat({ session, onEnd }) {
     } catch (_) { onEnd(); }
   }
 
+  // ── Transcript visibility by level ────────────────────────────────────
+  // B2+ → null (hide), B1 → first sentence, A1/A2 → full text
+  function agentDisplayText(text) {
+    if (level === 'upper-intermediate' || level === 'advanced') return null;
+    if (level === 'intermediate') {
+      const m = text.match(/^[^.!?]*[.!?]/);
+      return m ? m[0] : text;
+    }
+    return text;
+  }
+
   // ── Feedback screen ───────────────────────────────────────────────────
   if (screen === 'loading') return (
     <div className="page-center">
@@ -203,64 +345,61 @@ export default function VoiceChat({ session, onEnd }) {
     </div>
   );
 
-  if (screen === 'feedback') {
-    return (
-      <div className="feedback-page">
-        <div className="feedback-header">
-          <h2>학습 피드백</h2>
-          <p className="feedback-student">{studentName}</p>
-        </div>
-
-        {feedback?.overall && (
-          <div className="feedback-overall">
-            <span className="material-symbols-outlined fill feedback-star">star</span>
-            <p>{feedback.overall}</p>
-          </div>
-        )}
-
-        {feedback?.sentences?.length > 0 && (
-          <div className="feedback-sentences">
-            <h3>내가 한 말</h3>
-            {feedback.sentences.map((s, i) => (
-              <div key={i} className="feedback-item">
-                <div className="feedback-original">
-                  <span className="feedback-label">내 말</span>
-                  <p className="feedback-quote">"{s.original}"</p>
-                </div>
-                {s.what_worked && (
-                  <div className="feedback-row positive">
-                    <span className="material-symbols-outlined fill feedback-icon">check_circle</span>
-                    <p>{s.what_worked}</p>
-                  </div>
-                )}
-                {s.needs_improvement && (
-                  <div className="feedback-row improve">
-                    <span className="material-symbols-outlined fill feedback-icon">lightbulb</span>
-                    <p>{s.needs_improvement}</p>
-                  </div>
-                )}
-                {s.corrected && (
-                  <div className="feedback-corrected">
-                    <span className="feedback-label">이렇게 말해보세요</span>
-                    <p className="feedback-corrected-text">"{s.corrected}"</p>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        <button className="btn primary feedback-done-btn" onClick={onEnd}>
-          <span className="material-symbols-outlined">home</span>
-          홈으로
-        </button>
+  if (screen === 'feedback') return (
+    <div className="feedback-page">
+      <div className="feedback-header">
+        <h2>학습 피드백</h2>
+        <p className="feedback-student">{studentName}</p>
       </div>
-    );
-  }
+      {feedback?.overall && (
+        <div className="feedback-overall">
+          <span className="material-symbols-outlined fill feedback-star">star</span>
+          <p>{feedback.overall}</p>
+        </div>
+      )}
+      {feedback?.sentences?.length > 0 && (
+        <div className="feedback-sentences">
+          <h3>내가 한 말</h3>
+          {feedback.sentences.map((s, i) => (
+            <div key={i} className="feedback-item">
+              <div className="feedback-original">
+                <span className="feedback-label">내 말</span>
+                <p className="feedback-quote">"{s.original}"</p>
+              </div>
+              {s.what_worked && (
+                <div className="feedback-row positive">
+                  <span className="material-symbols-outlined fill feedback-icon">check_circle</span>
+                  <p>{s.what_worked}</p>
+                </div>
+              )}
+              {s.needs_improvement && (
+                <div className="feedback-row improve">
+                  <span className="material-symbols-outlined fill feedback-icon">lightbulb</span>
+                  <p>{s.needs_improvement}</p>
+                </div>
+              )}
+              {s.corrected && (
+                <div className="feedback-corrected">
+                  <span className="feedback-label">이렇게 말해보세요</span>
+                  <p className="feedback-corrected-text">"{s.corrected}"</p>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      <button className="btn primary feedback-done-btn" onClick={onEnd}>
+        <span className="material-symbols-outlined">home</span>
+        홈으로
+      </button>
+    </div>
+  );
 
   // ── Chat screen ───────────────────────────────────────────────────────
+  const isPreparing = status === 'preparing';
+  const isListening = status === 'listening';
   const isRecording = status === 'recording';
-  const isBusy = status === 'processing' || status === 'speaking' || status === 'connecting';
+  const isSpeaking  = status === 'speaking';
 
   return (
     <div className="voice-chat">
@@ -279,6 +418,9 @@ export default function VoiceChat({ session, onEnd }) {
           <div>
             <div className="vc-persona-name">{personaName}</div>
             <div className="vc-task-name">{task?.title}</div>
+            {objectives.length > 0 && (
+              <div className="vc-task-obj">{objectives.slice(0, 2).join(' · ')}</div>
+            )}
           </div>
         </div>
         <div className="vc-header-right">
@@ -288,7 +430,7 @@ export default function VoiceChat({ session, onEnd }) {
               Goal
             </button>
           )}
-          <button className="btn danger sm" onClick={handleEnd}>End Chat</button>
+          <button className="btn danger sm" onClick={handleEnd}>End</button>
         </div>
       </div>
 
@@ -313,12 +455,24 @@ export default function VoiceChat({ session, onEnd }) {
         {transcript.length === 0 && (
           <p className="vc-waiting">{personaName} will say hello — just wait a moment.</p>
         )}
-        {transcript.map((m, i) => (
-          <div key={i} className={`vc-bubble ${m.role === 'user' ? 'user' : 'agent'}`}>
-            <span className="vc-bubble-name">{m.role === 'user' ? studentName : personaName}</span>
-            <p>{m.message}</p>
-          </div>
-        ))}
+        {transcript.map((m, i) => {
+          if (m.role === 'agent') {
+            const display = agentDisplayText(m.message);
+            if (!display) return null;
+            return (
+              <div key={i} className="vc-bubble agent">
+                <span className="vc-bubble-name">{personaName}</span>
+                <p>{display}</p>
+              </div>
+            );
+          }
+          return (
+            <div key={i} className="vc-bubble user">
+              <span className="vc-bubble-name">{studentName}</span>
+              <p>{m.message}</p>
+            </div>
+          );
+        })}
         <div ref={transcriptEndRef} />
       </div>
 
@@ -356,25 +510,42 @@ export default function VoiceChat({ session, onEnd }) {
             <button className="suggestion-close" onClick={() => setShowSuggestion(false)}>✕</button>
           </div>
         )}
+
         {error && <p className="error" style={{ textAlign: 'center', marginBottom: 8 }}>{error}</p>}
-        <button
-          className={`ptt-btn ${isRecording ? 'recording' : ''} ${isBusy ? 'busy' : ''}`}
-          onPointerDown={startRecording}
-          onPointerUp={stopRecording}
-          onPointerLeave={stopRecording}
-          disabled={isBusy}
+
+        <div
+          className={`vad-indicator ${status}`}
+          onClick={() => isSpeaking && currentAudioRef.current?.pause()}
+          style={{ cursor: isSpeaking ? 'pointer' : 'default' }}
         >
-          <span className="material-symbols-outlined fill ptt-icon">
-            {isRecording ? 'mic' : isBusy ? 'hourglass_empty' : 'mic_none'}
+          <div className="vad-circle">
+            {isPreparing && prepCountdown > 0 && <span className="vad-countdown">{prepCountdown}</span>}
+            {isPreparing && prepCountdown === 0 && (
+              <span className="material-symbols-outlined spin" style={{ fontSize: 36 }}>sync</span>
+            )}
+            {isListening && (
+              <span className="material-symbols-outlined fill" style={{ fontSize: 36 }}>mic_none</span>
+            )}
+            {isRecording && (
+              <span className="material-symbols-outlined fill" style={{ fontSize: 36 }}>mic</span>
+            )}
+            {status === 'processing' && (
+              <span className="material-symbols-outlined spin" style={{ fontSize: 36 }}>sync</span>
+            )}
+            {(isSpeaking || status === 'connecting') && (
+              <span className="material-symbols-outlined fill" style={{ fontSize: 36 }}>volume_up</span>
+            )}
+          </div>
+          <span className="vad-label">
+            {isPreparing && prepCountdown > 0 ? 'Get ready…'
+              : isPreparing                   ? 'Almost ready…'
+              : isListening                   ? 'Listening…'
+              : isRecording                   ? 'I hear you…'
+              : status === 'processing'       ? 'Thinking…'
+              : isSpeaking                    ? 'Tap to skip'
+              : 'Connecting…'}
           </span>
-          <span className="ptt-label">
-            {isRecording ? 'Release to send'
-              : status === 'processing' ? 'Thinking…'
-              : status === 'speaking'   ? 'Speaking…'
-              : status === 'connecting' ? 'Connecting…'
-              : 'Hold to speak'}
-          </span>
-        </button>
+        </div>
       </div>
     </div>
   );

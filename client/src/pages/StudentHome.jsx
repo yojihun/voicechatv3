@@ -76,6 +76,7 @@ export default function StudentHome({ onStartChat, onBack }) {
       speechSpeed,
       voiceId,
       scenario: pendingSession.scenario ?? null,
+      level,
     });
   }
 
