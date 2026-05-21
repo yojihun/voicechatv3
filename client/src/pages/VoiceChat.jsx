@@ -4,8 +4,9 @@ import { endSession, getFeedback, getHints } from '../api/client';
 const BASE = (import.meta.env.VITE_API_URL || '') + '/api';
 
 const PREP_MS = { beginner: 3000, elementary: 2500, intermediate: 2000, 'upper-intermediate': 400, advanced: 400 };
-const VAD_THRESHOLD = 18;  // average freq-bin amplitude (0-255) to trigger speech
+const VAD_THRESHOLD = 22;  // average freq-bin amplitude (0-255) to trigger speech
 const SILENCE_MS = 1200;   // ms of quiet after speech before stopping recording
+const MIN_SPEECH_MS = 600; // discard recordings with less real speech than this
 
 // ── Transcript helpers ────────────────────────────────────────────────
 const FUNCTION_WORDS = new Set([
@@ -88,8 +89,9 @@ export default function VoiceChat({ session, onEnd }) {
   const cdIntervalRef    = useRef(null);
   const recorderRef      = useRef(null);
   const chunksRef        = useRef([]);
-  const silenceTimerRef  = useRef(null);
-  const noSpeechTimerRef = useRef(null);
+  const silenceTimerRef    = useRef(null);
+  const noSpeechTimerRef   = useRef(null);
+  const speechStartTimeRef = useRef(null); // when VAD first detected speech this turn
 
   const personaName = task?.persona_name || 'Alex';
   const objectives  = task?.objectives ?? [];
@@ -244,6 +246,7 @@ export default function VoiceChat({ session, onEnd }) {
       if (rms > VAD_THRESHOLD && st === 'listening') {
         // Speech start → begin recording
         clearTimeout(noSpeechTimerRef.current);
+        speechStartTimeRef.current = Date.now();
         chunksRef.current = [];
         const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
         const recorder  = new MediaRecorder(streamRef.current, { mimeType });
@@ -270,6 +273,16 @@ export default function VoiceChat({ session, onEnd }) {
     vadTimerRef.current = null;
     const recorder = recorderRef.current;
     if (!recorder || recorder.state === 'inactive') { startTurnListen(); return; }
+
+    // Approximate speech duration: total recording time minus the trailing silence window.
+    // If it's too short the trigger was a non-verbal sound — discard silently.
+    const speechMs = (Date.now() - (speechStartTimeRef.current ?? 0)) - SILENCE_MS;
+    if (speechMs < MIN_SPEECH_MS) {
+      recorder.onstop = () => startTurnListen();
+      recorder.stop();
+      return;
+    }
+
     setStatusSync('processing');
     const mimeType = recorder.mimeType || 'audio/webm';
     recorder.onstop = () => sendRecording(mimeType);
