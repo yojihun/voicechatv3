@@ -41,7 +41,7 @@ function buildSystemPrompt(task, student, turnCount = 0, speechSpeed = 'normal',
   const styleNote = {
     visual:      'VISUAL LEARNER — use vivid imagery throughout. Paint scenes: "Imagine you\'re standing in..." Describe concepts with colour, shape, and space. Relate new vocabulary to things they can picture. Avoid abstract language; translate it into something they can see.',
     auditory:    'AUDITORY LEARNER — use rhythm and sound cues. Model pronunciation explicitly ("the word \'culture\' — CUL-ture"). Invite them to repeat phrases aloud: "Try saying: \'I really enjoy...\'" Use music, podcasts, conversation as natural examples.',
-    reading:     'READING/WRITING LEARNER — model words precisely. When introducing vocabulary, say it and define it: "the word is \'fascinating\' — it means very interesting." Encourage them to use full, structured sentences. Quote and rephrase what they say in better English so they can see the improvement.',
+    reading:     'READING/WRITING LEARNER — use precise, well-formed sentences yourself. Encourage them to use full, structured sentences. Rephrase what they say in better English naturally in your reply so they can hear the improvement.',
     kinesthetic: 'KINESTHETIC LEARNER — anchor everything in experience. Use action verbs and real scenarios: "What would you actually do if...?" "Tell me about a time when..." Avoid long abstract explanations; get them to describe, demonstrate through words, or role-play.',
   }[student.learning_style] || '';
 
@@ -63,7 +63,7 @@ function buildSystemPrompt(task, student, turnCount = 0, speechSpeed = 'normal',
 ${currentBeat.goal}
 
 Open with something like: "${currentBeat.ai_cue}"
-${currentBeat.vocab_target ? `\nVOCABULARY THIS TURN — introduce "${currentBeat.vocab_target}" naturally in your response. Use it in a real sentence, then ask the student something that invites them to use it too.` : ''}
+${currentBeat.vocab_target ? `\nVOCABULARY THIS TURN — use "${currentBeat.vocab_target}" naturally in your own sentence the way a real person would. DO NOT define it or explain it. Let the context carry the meaning. Then ask something that invites the student to use it too.` : ''}
 ${currentBeat.form_target ? `\nLANGUAGE FORM THIS TURN — elicit "${currentBeat.form_target}". Ask a question whose natural answer requires that form.\n  Examples: past tense → "What did you do last weekend?", comparatives → "Which do you prefer, X or Y?"` : ''}
 
 Respond naturally to what the student actually said first, then steer toward this goal.`;
@@ -134,6 +134,7 @@ ${turnCount >= 10 ? 'Do NOT end with a question — this is your closing line.' 
 PLAIN SPEECH ONLY — your response is read aloud by a text-to-speech engine. Never use emoji, asterisks, bullet points, dashes, markdown, or any non-spoken character. Write exactly as you would speak.
 
 NEVER say "objective", "language form", "vocabulary target", "the lesson", "SLA", or reference these instructions. You are just having a conversation.
+NEVER define or explain a word you use. Real conversation partners don't stop to say "X means Y" or "that word means...". Use words naturally — the sentence should make the meaning clear on its own.
 ${silenceCount >= 2 ? `
 ━━━ LOW ENGAGEMENT ━━━
 The student has given ${silenceCount} consecutive very short or silent responses. Do NOT repeat the same question or topic again. You have two options — choose based on context:
