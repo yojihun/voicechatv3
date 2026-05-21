@@ -141,7 +141,7 @@ export default function VoiceChat({ session, onEnd }) {
       const chatRes = await fetch(`${BASE}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId, messages: messagesRef.current, speech_speed: speechSpeed }),
+        body: JSON.stringify({ session_id: sessionId, messages: messagesRef.current, speech_speed: speechSpeed, silence_count: silenceCountRef.current }),
       });
       if (!chatRes.ok) throw new Error('AI response failed');
       const { text: aiText, task_complete } = await chatRes.json();

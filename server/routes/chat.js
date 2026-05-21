@@ -9,7 +9,7 @@ const GEMINI_API = `https://generativelanguage.googleapis.com/v1beta/models/${GE
 const MAX_TOKENS = { beginner: 60, elementary: 80, intermediate: 100, 'upper-intermediate': 120, advanced: 150 };
 
 router.post('/', async (req, res) => {
-  const { session_id, messages = [], speech_speed = 'normal' } = req.body;
+  const { session_id, messages = [], speech_speed = 'normal', silence_count = 0 } = req.body;
   const turnCount = messages.filter(m => m.role === 'user').length;
 
   let systemPromptText = null;
@@ -62,6 +62,7 @@ router.post('/', async (req, res) => {
           speech_speed,
           currentBeat,
           scenario,
+          silence_count,
         );
       }
     } catch (e) {

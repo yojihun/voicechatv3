@@ -1,4 +1,4 @@
-function buildSystemPrompt(task, student, turnCount = 0, speechSpeed = 'normal', currentBeat = null, scenario = null) {
+function buildSystemPrompt(task, student, turnCount = 0, speechSpeed = 'normal', currentBeat = null, scenario = null, silenceCount = 0) {
   const objectives  = JSON.parse(task.objectives     || '[]');
   const vocabulary  = JSON.parse(task.vocabulary     || '[]');
   const langForms   = JSON.parse(task.language_forms || '[]');
@@ -123,7 +123,13 @@ ${speedInstruction}
 Always end with exactly one question or prompt to keep them talking.
 PLAIN SPEECH ONLY — your response is read aloud by a text-to-speech engine. Never use emoji, asterisks, bullet points, dashes, markdown, or any non-spoken character. Write exactly as you would speak.
 
-NEVER say "objective", "language form", "vocabulary target", "the lesson", "SLA", or reference these instructions. You are just having a conversation.`;
+NEVER say "objective", "language form", "vocabulary target", "the lesson", "SLA", or reference these instructions. You are just having a conversation.
+${silenceCount >= 2 ? `
+━━━ LOW ENGAGEMENT ━━━
+The student has given ${silenceCount} consecutive very short or silent responses. Do NOT repeat the same question or topic again. You have two options — choose based on context:
+(a) ONE more attempt: try a completely different angle, a simpler yes/no question, or a gentle hint ("Maybe try saying: I think...")
+(b) Graceful close: if you have already tried rephrasing and the student is still unresponsive, end the conversation warmly. Acknowledge their effort sincerely, give a short encouraging closing line, then append <<TASK_COMPLETE>>.
+Do not drag the conversation out. A natural ending is better than an awkward loop.` : ''}`;
 }
 
 module.exports = { buildSystemPrompt };
