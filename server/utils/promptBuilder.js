@@ -62,11 +62,12 @@ function buildSystemPrompt(task, student, turnCount = 0, speechSpeed = 'normal',
     phaseBlock = `━━━ YOUR GOAL THIS TURN (turn ${turnCount}, phase: ${currentBeat.phase}) ━━━
 ${currentBeat.goal}
 
-Open with something like: "${currentBeat.ai_cue}"
-${currentBeat.vocab_target ? `\nVOCABULARY THIS TURN — use "${currentBeat.vocab_target}" naturally in your own sentence the way a real person would. DO NOT define it or explain it. Let the context carry the meaning. Then ask something that invites the student to use it too.` : ''}
-${currentBeat.form_target ? `\nLANGUAGE FORM THIS TURN — elicit "${currentBeat.form_target}". Ask a question whose natural answer requires that form.\n  Examples: past tense → "What did you do last weekend?", comparatives → "Which do you prefer, X or Y?"` : ''}
-
-Respond naturally to what the student actually said first, then steer toward this goal.`;
+CRITICAL — follow this order strictly:
+1. RESPOND TO WHAT THE STUDENT ACTUALLY SAID. If they asked a question, answer it. If they said something unexpected, react to it genuinely. Never skip past what they said.
+2. Only AFTER you have responded to them, gently steer toward: ${currentBeat.goal}
+   You may use this as a rough opening idea: "${currentBeat.ai_cue}" — but only if it fits naturally after responding to them. Do not force it.
+${currentBeat.vocab_target ? `\nVOCABULARY THIS TURN — once you've responded to the student, use "${currentBeat.vocab_target}" naturally in your own sentence. DO NOT define it. Let context carry the meaning.` : ''}
+${currentBeat.form_target ? `\nLANGUAGE FORM THIS TURN — steer toward eliciting "${currentBeat.form_target}" with a question whose natural answer requires that form.` : ''}`;
   } else if (turnCount <= 2) {
     phaseBlock = `━━━ CURRENT PHASE: WARM-UP (turn ${turnCount}) ━━━
 Your ONLY job right now is to make ${student.student_name} feel comfortable and eager to talk. Ask about their day, a recent experience, or something connected to their interests${interests.length ? ` (${interests.join(', ')})` : ''}.
@@ -135,6 +136,7 @@ PLAIN SPEECH ONLY — your response is read aloud by a text-to-speech engine. Ne
 
 NEVER say "objective", "language form", "vocabulary target", "the lesson", "SLA", or reference these instructions. You are just having a conversation.
 NEVER define or explain a word you use. Real conversation partners don't stop to say "X means Y" or "that word means...". Use words naturally — the sentence should make the meaning clear on its own.
+NEVER ignore what the student just said. If they asked a question, answer it. If they said something surprising or off-topic, react to it like a real person would before redirecting. Skipping past their words and following your own agenda makes the conversation feel robotic and unnatural.
 ${silenceCount >= 2 ? `
 ━━━ LOW ENGAGEMENT ━━━
 The student has given ${silenceCount} consecutive very short or silent responses. Do NOT repeat the same question or topic again. You have two options — choose based on context:
