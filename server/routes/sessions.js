@@ -135,9 +135,12 @@ router.post('/start', async (req, res) => {
     args: [task_id, student_name, level, JSON.stringify(interests || []), learning_style, outline ? JSON.stringify(outline) : null, scenario ? JSON.stringify(scenario) : null],
   });
 
+  const firstBeatCue = outline?.beats?.[0]?.ai_cue;
+  const first_message = firstBeatCue || `Hi ${student_name}! I'm ${task.persona_name || 'Alex'}. Great to meet you!`;
+
   res.json({
     session_id:    Number(ins.lastInsertRowid),
-    first_message: `Hi ${student_name}! I'm ${task.persona_name || 'Alex'}. Great to meet you!`,
+    first_message,
     outline_beats: outline?.beats?.length ?? 0,
     scenario,
   });
