@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { endSession, getFeedback } from '../api/client';
+import { endSession, getFeedback, getHints } from '../api/client';
 
 const BASE = (import.meta.env.VITE_API_URL || '') + '/api';
 
@@ -15,6 +15,9 @@ export default function VoiceChat({ session, onEnd }) {
   const [showSuggestion, setShowSuggestion] = useState(false);
   const [showGoal, setShowGoal] = useState(false);
   const [showComplete, setShowComplete] = useState(false);
+  const [hints, setHints] = useState([]);
+  const [hintsType, setHintsType] = useState(null); // 'starters' | 'vocab'
+  const [activeHint, setActiveHint] = useState(null);
 
   const taskCompleteRef = useRef(false);
 
@@ -72,6 +75,9 @@ export default function VoiceChat({ session, onEnd }) {
   async function startRecording() {
     if (status !== 'idle') return;
     setError('');
+    setHints([]);
+    setHintsType(null);
+    setActiveHint(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunksRef.current = [];
@@ -145,7 +151,15 @@ export default function VoiceChat({ session, onEnd }) {
       transcriptRef.current = [...transcriptRef.current, aiEntry];
       setTranscript(prev => [...prev, aiEntry]);
 
-      await playTTS(aiText);
+      const [, hintsData] = await Promise.all([
+        playTTS(aiText),
+        getHints(sessionId, aiText).catch(() => null),
+      ]);
+
+      if (hintsData?.hints?.length) {
+        setHints(hintsData.hints);
+        setHintsType(hintsData.type);
+      }
 
       if (task_complete && !taskCompleteRef.current) {
         taskCompleteRef.current = true;
@@ -309,6 +323,29 @@ export default function VoiceChat({ session, onEnd }) {
       </div>
 
       <div className="vc-controls">
+        {hints.length > 0 && (
+          <div className="hints-section">
+            <span className="hints-label">
+              <span className="material-symbols-outlined sm">lightbulb</span>
+              {hintsType === 'starters' ? 'Try saying:' : 'Useful words:'}
+            </span>
+            <div className="hints-chips">
+              {hints.map((h, i) => (
+                <button
+                  key={i}
+                  className={`hint-chip ${hintsType} ${activeHint === i ? 'active' : ''}`}
+                  onClick={() => setActiveHint(activeHint === i ? null : i)}
+                >
+                  {h}
+                </button>
+              ))}
+            </div>
+            {activeHint !== null && hintsType === 'starters' && (
+              <div className="hint-spotlight">{hints[activeHint]}</div>
+            )}
+          </div>
+        )}
+
         {showSuggestion && (
           <div className="suggestion-bubble">
             <span className="material-symbols-outlined fill">lightbulb</span>

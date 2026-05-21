@@ -11,6 +11,7 @@ const feedbackRoute = require('./routes/feedback');
 const sttRoute = require('./routes/stt');
 const ttsRoute = require('./routes/tts');
 const chatRoute = require('./routes/chat');
+const hintsRoute = require('./routes/hints');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -29,6 +30,7 @@ app.use('/api/feedback', feedbackRoute);
 app.use('/api/stt', sttRoute);
 app.use('/api/tts', ttsRoute);
 app.use('/api/chat', chatRoute);
+app.use('/api/hints', hintsRoute);
 
 app.get('/health', (_, res) => res.json({ ok: true }));
 

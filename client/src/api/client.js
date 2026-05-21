@@ -27,3 +27,4 @@ export const endSession = (sessionId, body) => request(`/${sessionId}/end`, { me
 
 export const analyzeTaskText = (text) => request('/tasks/analyze', { method: 'POST', body: { text } });
 export const getFeedback = (sessionId) => request(`/feedback/${sessionId}`, { method: 'POST' });
+export const getHints = (sessionId, aiText) => request('/hints', { method: 'POST', body: { session_id: sessionId, ai_text: aiText } });

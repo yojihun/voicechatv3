@@ -371,3 +371,31 @@ label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-w
 }
 .task-complete-icon { font-size: 72px; color: white; }
 .task-complete-label { font-family: 'Manrope', sans-serif; font-size: 28px; font-weight: 800; color: white; margin: 0; }
+
+/* ── Language hints (A1–B1 scaffolding) ── */
+.hints-section {
+  width: 100%; display: flex; flex-direction: column; gap: 8px;
+  padding-bottom: 4px; animation: fadeIn 0.2s ease;
+}
+.hints-label {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--outline);
+}
+.hints-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.hint-chip {
+  padding: 7px 13px; border-radius: 999px; border: 1.5px solid var(--outline-variant);
+  background: white; font-size: 13px; cursor: pointer; transition: all 0.15s;
+  font-family: 'Inter', sans-serif; color: var(--on-surface);
+}
+.hint-chip.starters { font-style: italic; }
+.hint-chip:hover { border-color: var(--primary); color: var(--primary); }
+.hint-chip.active { background: var(--primary); color: white; border-color: var(--primary); }
+.hint-chip.vocab { font-weight: 600; background: #f0fdf4; border-color: #86efac; color: #15803d; }
+.hint-chip.vocab.active { background: #15803d; color: white; border-color: #15803d; }
+.hint-spotlight {
+  width: 100%; padding: 10px 14px; background: var(--primary-light);
+  border: 1.5px solid var(--primary); border-radius: var(--radius-md);
+  font-size: 15px; font-style: italic; font-weight: 600; color: var(--primary);
+  text-align: center; animation: fadeIn 0.15s ease;
+}
