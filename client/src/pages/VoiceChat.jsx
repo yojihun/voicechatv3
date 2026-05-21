@@ -7,6 +7,50 @@ const PREP_MS = { beginner: 3000, elementary: 2500, intermediate: 2000, 'upper-i
 const VAD_THRESHOLD = 18;  // average freq-bin amplitude (0-255) to trigger speech
 const SILENCE_MS = 1200;   // ms of quiet after speech before stopping recording
 
+// ── Transcript helpers ────────────────────────────────────────────────
+const FUNCTION_WORDS = new Set([
+  'a','an','the',
+  'i','you','he','she','it','we','they','me','him','her','us','them',
+  'my','your','his','its','our','their',
+  'this','that','these','those',
+  'is','are','was','were','be','been','being','am',
+  'have','has','had','do','does','did',
+  'will','would','could','should','may','might','shall','can','must',
+  'and','but','or','nor','so',
+  'at','by','for','from','in','of','on','to','with','as','into',
+  'about','if','then','than','just','very','also','too','here','there',
+]);
+
+function b2MajorWords(text) {
+  const parts = [];
+  let ellipsis = false;
+  for (const tok of text.split(/\s+/)) {
+    const clean = tok.replace(/[^a-zA-Z]/g, '').toLowerCase();
+    if (!clean || FUNCTION_WORDS.has(clean)) {
+      ellipsis = true;
+    } else {
+      if (ellipsis) { parts.push('…'); ellipsis = false; }
+      parts.push(tok);
+    }
+  }
+  if (ellipsis) parts.push('…');
+  return parts.join(' ');
+}
+
+function isRepeatRequest(text) {
+  const t = text.toLowerCase();
+  return /say (that |it )?again/i.test(t)
+    || /can you repeat/i.test(t)
+    || /could you (say|repeat)/i.test(t)
+    || /what did you say/i.test(t)
+    || /\bpardon\b/.test(t)
+    || /i didn.?t (catch|hear|get that)/i.test(t)
+    || /one more time/i.test(t)
+    || /repeat that/i.test(t)
+    || /what.?s that/i.test(t)
+    || /what was that/i.test(t);
+}
+
 export default function VoiceChat({ session, onEnd }) {
   const {
     sessionId, task, studentName, speechSpeed = 'normal',
@@ -25,6 +69,7 @@ export default function VoiceChat({ session, onEnd }) {
   const [hints, setHints] = useState([]);
   const [hintsType, setHintsType] = useState(null);
   const [activeHint, setActiveHint] = useState(null);
+  const [revealedAgentTurns, setRevealedAgentTurns] = useState(new Set());
 
   const taskCompleteRef  = useRef(false);
   const messagesRef      = useRef([]);
@@ -263,6 +308,16 @@ export default function VoiceChat({ session, onEnd }) {
         setShowSuggestion(false);
       }
 
+      // Reveal full text of last agent turn on repetition request
+      if (isRepeatRequest(userText)) {
+        for (let j = transcriptRef.current.length - 1; j >= 0; j--) {
+          if (transcriptRef.current[j].role === 'agent') {
+            setRevealedAgentTurns(prev => new Set([...prev, j]));
+            break;
+          }
+        }
+      }
+
       const userEntry = { role: 'user', message: userText };
       messagesRef.current   = [...messagesRef.current,   { role: 'user',      content: userText }];
       transcriptRef.current = [...transcriptRef.current, userEntry];
@@ -325,14 +380,19 @@ export default function VoiceChat({ session, onEnd }) {
   }
 
   // ── Transcript visibility by level ────────────────────────────────────
-  // B2+ → null (hide), B1 → first sentence, A1/A2 → full text
-  function agentDisplayText(text) {
-    if (level === 'upper-intermediate' || level === 'advanced') return null;
-    if (level === 'intermediate') {
+  function agentDisplayText(text, index) {
+    if (revealedAgentTurns.has(index)) return text;               // one-time full reveal
+    if (level === 'advanced')          return null;               // C1-C2: hide
+    if (level === 'upper-intermediate') return b2MajorWords(text); // B2: content words only
+    if (level === 'intermediate') {                                // B1: first sentence
       const m = text.match(/^[^.!?]*[.!?]/);
       return m ? m[0] : text;
     }
-    return text;
+    if (level === 'elementary') {                                  // A2: first two sentences
+      const m = text.match(/^(?:[^.!?]*[.!?]){1,2}/);
+      return m ? m[0] : text;
+    }
+    return text;                                                   // A1: full text
   }
 
   // ── Feedback screen ───────────────────────────────────────────────────
@@ -457,7 +517,7 @@ export default function VoiceChat({ session, onEnd }) {
         )}
         {transcript.map((m, i) => {
           if (m.role === 'agent') {
-            const display = agentDisplayText(m.message);
+            const display = agentDisplayText(m.message, i);
             if (!display) return null;
             return (
               <div key={i} className="vc-bubble agent">
