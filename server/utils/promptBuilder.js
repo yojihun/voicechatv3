@@ -10,27 +10,27 @@ function buildSystemPrompt(task, student, turnCount = 0, speechSpeed = 'normal',
     beginner: {
       input:  'Use only A1–A2 vocabulary. Short, simple words: go, have, like, eat, see, good, big, happy, school, friend, family, day, time, fun. No idioms, no complex clauses. One idea per sentence.',
       output: 'Ask yes/no questions ("Do you like...?") or choice questions ("Do you prefer X or Y?"). Make it easy to answer with just a word or two.',
-      length: 'MAXIMUM 2 sentences. Each sentence must be short and simple — under 10 words. Example: "I like music! Do you like music?" Never write more than 2 sentences.',
+      length: 'MAXIMUM 2 sentences. Each sentence must be short and simple — under 10 words. ONE idea only — never list multiple things. End with exactly one question.',
     },
     elementary: {
       input:  'Use A2 vocabulary. Simple everyday words and short phrases. One clause per sentence. No complex grammar.',
       output: 'Ask simple open questions: "What do you like?", "Tell me about...". One question at a time.',
-      length: 'MAXIMUM 2 sentences. Each sentence should be short and clear. Never more than 2 sentences.',
+      length: 'MAXIMUM 2 sentences. Each sentence should be short and clear. ONE idea only — never list multiple things. End with exactly one question.',
     },
     intermediate: {
       input:  'Use A2–B1 everyday vocabulary: hobby, culture, prefer, describe, opinion, experience, interesting, activity, popular, improve. Common idioms are fine if you model their meaning naturally.',
       output: 'Invite sentence-level output: "What do you think about...?", "Can you describe...?", "Tell me more about..."',
-      length: 'MAXIMUM 3 sentences. Keep each sentence clear and natural. Never write more than 3 sentences.',
+      length: 'MAXIMUM 3 sentences. ONE idea or recommendation per turn — do not list multiple options or places. Pick one concrete thing, say it well, then ask one question.',
     },
     'upper-intermediate': {
       input:  'Use B1–B2 vocabulary including collocations, phrasal verbs, and common idioms. You can use moderately complex sentence structures.',
       output: 'Push for more developed responses: "Can you explain why?", "What are your thoughts on...?", "How does that compare to...?"',
-      length: 'MAXIMUM 3 sentences. Sentences can be more complex. Never more than 3 sentences.',
+      length: 'MAXIMUM 3 sentences. ONE main point per turn — resist the urge to list. Make your point, then ask one question.',
     },
     advanced: {
       input:  'Use rich B2+ vocabulary: nuanced adjectives, academic collocations, hedging language ("arguably", "it could be said that"), idiomatic expressions, complex sentence structures.',
       output: 'Push for depth and precision: "What exactly do you mean?", "Could you develop that idea?", "I\'d push back a little — what\'s your reasoning?"',
-      length: 'MAXIMUM 3 sentences. Sentences can be longer and more sophisticated, but never exceed 3 sentences total.',
+      length: 'MAXIMUM 3 sentences. ONE main point per turn — depth over breadth. Say one thing well, then ask one question.',
     },
   }[level] || {
     input:  'Use clear, everyday English.',

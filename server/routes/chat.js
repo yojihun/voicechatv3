@@ -6,7 +6,7 @@ const router = express.Router();
 const GEMINI_MODEL = 'gemini-2.5-flash';
 const GEMINI_API = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
-const MAX_TOKENS = { beginner: 60, elementary: 80, intermediate: 100, 'upper-intermediate': 120, advanced: 150 };
+const MAX_TOKENS = { beginner: 80, elementary: 100, intermediate: 130, 'upper-intermediate': 160, advanced: 190 };
 
 router.post('/', async (req, res) => {
   const { session_id, messages = [], speech_speed = 'normal', silence_count = 0 } = req.body;
