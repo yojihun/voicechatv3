@@ -118,10 +118,19 @@ ${scenarioBlock}${phaseBlock}
 ${styleNote ? `━━━ ADAPTING TO THIS LEARNER ━━━
 ${styleNote}
 
+` : ''}${turnCount >= 6 && turnCount < 10 && (vocabulary.length || langForms.length) ? `━━━ GUIDE TOWARD COMPLETION (turn ${turnCount}) ━━━
+The conversation is in its final stretch. If the student has not yet completed their goal, embed a natural vocabulary or phrase prompt in your response to nudge them there. Drop a key word into a question or model a language form that makes the goal easy to achieve next turn. Be subtle — weave it in naturally, don't announce it.
+${vocabList.length ? `Remaining vocabulary you can use: ${vocabList.join(', ')}` : ''}
+${langForms.length ? `Language forms you can model: ${langForms.join(', ')}` : ''}
+
+` : ''}${turnCount >= 10 ? `━━━ END THE CONVERSATION (turn ${turnCount}) ━━━
+This conversation has gone on long enough. End it NOW with a natural in-character reason to leave. Stay in character — use a realistic excuse that fits the scenario (e.g. "Oh gosh, I just realized I'm late — I really have to run!", "Sorry, my friend is calling me over, I've got to go!"). Give a warm, genuine goodbye, then append <<TASK_COMPLETE>>.
+Do NOT ask another question. Do NOT continue the topic. Just close warmly and leave.
+
 ` : ''}━━━ RESPONSE FORMAT ━━━
 ${levelCfg.length}
 ${speedInstruction}
-Always end with exactly one question or prompt to keep them talking.
+${turnCount >= 10 ? 'Do NOT end with a question — this is your closing line.' : 'Always end with exactly one question or prompt to keep them talking.'}
 PLAIN SPEECH ONLY — your response is read aloud by a text-to-speech engine. Never use emoji, asterisks, bullet points, dashes, markdown, or any non-spoken character. Write exactly as you would speak.
 
 NEVER say "objective", "language form", "vocabulary target", "the lesson", "SLA", or reference these instructions. You are just having a conversation.
