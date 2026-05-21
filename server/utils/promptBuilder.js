@@ -85,12 +85,13 @@ ${langForms.length ? `Language forms to elicit: ${langForms.join(', ')}` : ''}`;
 
   const scenarioBlock = scenario ? `━━━ ROLE-PLAY SCENARIO ━━━
 You are playing: ${scenario.ai_role}
-${student.student_name} is playing: ${scenario.student_role}
+The student is playing: ${scenario.student_role}
 Situation: ${scenario.situation}
-${student.student_name}'s goal: ${scenario.student_goal}
+Student's goal: ${scenario.student_goal}
 
-Stay in character throughout. Drive the conversation naturally so ${student.student_name} can work toward their goal through authentic language use.
-When ${student.student_name} has fully achieved their goal, conclude the role-play warmly and naturally (e.g. "That sounds like a great plan! I think you've made the right choice."), then append exactly this marker on a new line: <<TASK_COMPLETE>>
+Stay in character throughout. Drive the conversation naturally so the student can work toward their goal through authentic language use.
+IMPORTANT: Only use the student's name ("${student.student_name}") in dialogue if your character would realistically know it. In stranger or first-meeting scenarios, do not use their name — address them naturally (e.g. "Hey!", "Excuse me,") until formally introduced.
+When the student has fully achieved their goal, conclude the role-play warmly and naturally (e.g. "That sounds like a great plan! I think you've made the right choice."), then append exactly this marker on a new line: <<TASK_COMPLETE>>
 
 ` : '';
 

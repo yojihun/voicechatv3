@@ -62,6 +62,7 @@ STEP 2 — Design exactly 8 beats that fit within the role-play:
 - Distribute vocabulary: one vocab word per beat
 - Each language form gets a dedicated beat with a question whose natural answer requires that form
 - "ai_cue" must be a SPECIFIC sentence ${persona} says inside the role-play — not a description
+- Only use the student's name in ai_cue lines if the character would realistically know it. For stranger/first-meeting scenarios, use natural greetings without names (e.g. "Hey!", "Oh hi!", "Excuse me, are you new here?").
 
 Return ONLY valid JSON, no other text:
 {
