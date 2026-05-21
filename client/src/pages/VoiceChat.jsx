@@ -4,7 +4,7 @@ import { endSession, getFeedback } from '../api/client';
 const BASE = (import.meta.env.VITE_API_URL || '') + '/api';
 
 export default function VoiceChat({ session, onEnd }) {
-  const { sessionId, task, studentName, speechSpeed = 'normal', voiceId, firstMessage } = session;
+  const { sessionId, task, studentName, speechSpeed = 'normal', voiceId, firstMessage, scenario } = session;
 
   const [status, setStatus] = useState('connecting');  // connecting|idle|recording|processing|speaking
   const [transcript, setTranscript] = useState([]);
@@ -13,6 +13,10 @@ export default function VoiceChat({ session, onEnd }) {
   const [feedback, setFeedback] = useState(null);
 
   const [showSuggestion, setShowSuggestion] = useState(false);
+  const [showGoal, setShowGoal] = useState(false);
+  const [showComplete, setShowComplete] = useState(false);
+
+  const taskCompleteRef = useRef(false);
 
   const messagesRef = useRef([]);    // [{role:'user'|'assistant', content}]
   const transcriptRef = useRef([]);  // [{role:'user'|'agent', message}]
@@ -134,7 +138,7 @@ export default function VoiceChat({ session, onEnd }) {
         body: JSON.stringify({ session_id: sessionId, messages: messagesRef.current, speech_speed: speechSpeed }),
       });
       if (!chatRes.ok) throw new Error('AI response failed');
-      const { text: aiText } = await chatRes.json();
+      const { text: aiText, task_complete } = await chatRes.json();
 
       const aiEntry = { role: 'agent', message: aiText };
       messagesRef.current = [...messagesRef.current, { role: 'assistant', content: aiText }];
@@ -142,7 +146,17 @@ export default function VoiceChat({ session, onEnd }) {
       setTranscript(prev => [...prev, aiEntry]);
 
       await playTTS(aiText);
-      setStatus('idle');
+
+      if (task_complete && !taskCompleteRef.current) {
+        taskCompleteRef.current = true;
+        setShowComplete(true);
+        setTimeout(() => {
+          setShowComplete(false);
+          handleEnd();
+        }, 1800);
+      } else {
+        setStatus('idle');
+      }
     } catch (e) {
       setError(e.message);
       setStatus('idle');
@@ -236,6 +250,13 @@ export default function VoiceChat({ session, onEnd }) {
 
   return (
     <div className="voice-chat">
+      {showComplete && (
+        <div className="task-complete-overlay">
+          <span className="material-symbols-outlined fill task-complete-icon">task_alt</span>
+          <p className="task-complete-label">Task Complete!</p>
+        </div>
+      )}
+
       <div className="vc-header">
         <div className="vc-persona">
           <div className="vc-avatar">
@@ -246,8 +267,33 @@ export default function VoiceChat({ session, onEnd }) {
             <div className="vc-task-name">{task?.title}</div>
           </div>
         </div>
-        <button className="btn danger sm" onClick={handleEnd}>End Chat</button>
+        <div className="vc-header-right">
+          {scenario?.student_goal && (
+            <button className="goal-chip" onClick={() => setShowGoal(v => !v)}>
+              <span className="material-symbols-outlined sm">flag</span>
+              Goal
+            </button>
+          )}
+          <button className="btn danger sm" onClick={handleEnd}>End Chat</button>
+        </div>
       </div>
+
+      {showGoal && scenario && (
+        <div className="goal-panel">
+          <div className="goal-panel-row">
+            <span className="goal-panel-label">Your role</span>
+            <span>{scenario.student_role}</span>
+          </div>
+          <div className="goal-panel-row">
+            <span className="goal-panel-label">Situation</span>
+            <span>{scenario.situation}</span>
+          </div>
+          <div className="goal-panel-row">
+            <span className="goal-panel-label">Goal</span>
+            <span className="goal-panel-goal">{scenario.student_goal}</span>
+          </div>
+        </div>
+      )}
 
       <div className="vc-transcript">
         {transcript.length === 0 && (

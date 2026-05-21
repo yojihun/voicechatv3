@@ -18,7 +18,7 @@ router.post('/', async (req, res) => {
   if (session_id) {
     try {
       const dbResult = await db.execute({
-        sql: `SELECT s.student_name, s.level, s.interests, s.learning_style, s.outline,
+        sql: `SELECT s.student_name, s.level, s.interests, s.learning_style, s.outline, s.scenario,
                      t.title, t.topic, t.objectives, t.vocabulary, t.language_forms,
                      t.persona_name, t.persona_description
               FROM sessions s
@@ -42,6 +42,11 @@ router.post('/', async (req, res) => {
           } catch (_) {}
         }
 
+        let scenario = null;
+        if (row.scenario) {
+          try { scenario = JSON.parse(row.scenario); } catch (_) {}
+        }
+
         systemPromptText = buildSystemPrompt(
           {
             title: row.title, topic: row.topic,
@@ -56,6 +61,7 @@ router.post('/', async (req, res) => {
           turnCount,
           speech_speed,
           currentBeat,
+          scenario,
         );
       }
     } catch (e) {
@@ -103,11 +109,15 @@ router.post('/', async (req, res) => {
 
     const data = await geminiRes.json();
     const parts = data.candidates?.[0]?.content?.parts ?? [];
-    const text = parts.filter(p => !p.thought).map(p => p.text || '').join('').trim();
+    const rawText = parts.filter(p => !p.thought).map(p => p.text || '').join('').trim();
 
-    if (!text) return res.status(502).json({ error: 'Empty response from AI' });
+    if (!rawText) return res.status(502).json({ error: 'Empty response from AI' });
 
-    res.json({ text });
+    const COMPLETE_MARKER = '<<TASK_COMPLETE>>';
+    const taskComplete = rawText.includes(COMPLETE_MARKER);
+    const text = rawText.replace(COMPLETE_MARKER, '').trim();
+
+    res.json({ text, task_complete: taskComplete });
   } catch (e) {
     console.error('[Chat] Error:', e.message);
     res.status(500).json({ error: e.message });

@@ -25,6 +25,7 @@ function ensureReady() {
     }
     try { await db.execute('ALTER TABLE sessions ADD COLUMN outline TEXT'); } catch (_) {}
     try { await db.execute('ALTER TABLE sessions ADD COLUMN feedback TEXT'); } catch (_) {}
+    try { await db.execute('ALTER TABLE sessions ADD COLUMN scenario TEXT'); } catch (_) {}
   })();
   return _ready;
 }

@@ -326,3 +326,48 @@ label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-w
 .sf-row.positive .sf-icon { color: #16a34a; }
 .sf-row.improve  .sf-icon { color: #2563eb; }
 .sf-corrected { margin: 0; font-size: 12px; font-weight: 600; color: var(--primary); }
+
+/* ── Task briefing card ── */
+.briefing-card { gap: 16px; }
+.briefing-header { display: flex; align-items: center; gap: 12px; }
+.briefing-header h2 { margin: 0; font-family: 'Manrope', sans-serif; font-size: 22px; font-weight: 700; }
+.briefing-icon { font-size: 28px; color: var(--primary); }
+.briefing-rows { display: flex; flex-direction: column; gap: 12px; }
+.briefing-row {
+  display: flex; flex-direction: column; gap: 4px;
+  background: var(--surface); border-radius: var(--radius-md); padding: 14px 16px;
+}
+.briefing-row.goal-row { background: var(--primary-light); border: 1.5px solid var(--primary); }
+.briefing-row-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--outline); }
+.briefing-row.goal-row .briefing-row-label { color: var(--primary); }
+.briefing-row-value { font-size: 14px; line-height: 1.5; color: var(--on-surface); }
+.briefing-hint { margin: 0; font-size: 13px; color: var(--outline); text-align: center; }
+
+/* ── Goal chip + panel in VoiceChat ── */
+.vc-header-right { display: flex; align-items: center; gap: 10px; }
+.goal-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 12px; border-radius: 999px;
+  border: 1.5px solid var(--primary); background: var(--primary-light);
+  color: var(--primary); font-size: 12px; font-weight: 700; cursor: pointer;
+  transition: all 0.15s;
+}
+.goal-chip:hover { background: var(--primary); color: white; }
+.goal-panel {
+  background: var(--primary-light); border-bottom: 1.5px solid var(--primary);
+  padding: 12px 24px; display: flex; flex-direction: column; gap: 6px;
+  animation: fadeIn 0.2s ease;
+}
+.goal-panel-row { display: flex; gap: 10px; font-size: 13px; line-height: 1.5; }
+.goal-panel-label { font-weight: 700; color: var(--primary); min-width: 70px; flex-shrink: 0; }
+.goal-panel-goal { font-weight: 600; color: var(--on-surface); }
+
+/* ── Task complete overlay ── */
+.task-complete-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,89,187,0.85);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 16px; animation: fadeIn 0.3s ease;
+}
+.task-complete-icon { font-size: 72px; color: white; }
+.task-complete-label { font-family: 'Manrope', sans-serif; font-size: 28px; font-weight: 800; color: white; margin: 0; }

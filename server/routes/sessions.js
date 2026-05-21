@@ -39,7 +39,7 @@ async function generateOutline(task, student) {
     advanced:     'Rich language. Intellectually stimulating questions that require explanation.',
   }[level] || 'Natural conversational English.';
 
-  const prompt = `You are an expert EFL curriculum designer. Create a structured 8-turn conversation outline for ${persona}, an AI English conversation partner, to guide a Korean EFL student through a lesson task.
+  const prompt = `You are an expert EFL curriculum designer. Your job is to create a TBLT (Task-Based Language Teaching) role-play scenario AND a structured 8-turn conversation outline for ${persona}, an AI English conversation partner, to guide a Korean EFL student through a lesson task.
 
 STUDENT: ${student.student_name}, ${level} level${interests.length ? `, interests: ${interests.join(', ')}` : ''}
 TASK TOPIC: ${task.topic || task.title}
@@ -48,18 +48,29 @@ TARGET VOCABULARY: ${vocabStr || 'none specified'}
 LANGUAGE FORMS TO ELICIT: ${formsStr || 'none specified'}
 LANGUAGE LEVEL NOTE: ${levelNote}
 
-Design exactly 8 beats. Rules:
-- Beats 1–2: warmup only — build rapport using the student's interests, NO lesson content
-- Beat 3: bridge from their response to the lesson topic naturally
-- Beats 4–8: task engagement — cover objectives, introduce vocabulary, elicit language forms
-- Distribute vocabulary: one vocab word per beat (don't pile them all in one turn)
-- Each language form gets a dedicated beat with a question that forces that form as the answer
-  Example: to elicit past tense → ask "What did you do last weekend?"
-- "ai_cue" must be a SPECIFIC, natural sentence ${persona} would actually say — not a description
-- If vocab_target or form_target is not applicable for a beat, use null
+STEP 1 — Create a role-play scenario:
+- Design a real-world situation grounded in the task topic
+- The student plays a role that requires them to use the target language to accomplish a concrete goal
+- ${persona} plays a character who helps drive the conversation toward that goal
+- The scenario should feel natural for a Korean high school student
+- Keep descriptions concise (1–2 sentences each)
+
+STEP 2 — Design exactly 8 beats that fit within the role-play:
+- Beats 1–2: warmup — ${persona} establishes the scenario and builds rapport using student's interests, no heavy lesson content yet
+- Beat 3: bridge into the main task/goal
+- Beats 4–8: task engagement — advance the role-play, cover objectives, introduce vocabulary, elicit language forms
+- Distribute vocabulary: one vocab word per beat
+- Each language form gets a dedicated beat with a question whose natural answer requires that form
+- "ai_cue" must be a SPECIFIC sentence ${persona} says inside the role-play — not a description
 
 Return ONLY valid JSON, no other text:
 {
+  "scenario": {
+    "student_role": "one sentence describing the student's character and situation",
+    "ai_role": "one sentence describing who ${persona} is in this scenario",
+    "situation": "one sentence describing the context/setting",
+    "student_goal": "one short sentence stating what the student must accomplish"
+  },
   "beats": [
     {
       "turn": 1,
@@ -109,22 +120,26 @@ router.post('/start', async (req, res) => {
   };
 
   let outline = null;
+  let scenario = null;
   try {
-    outline = await generateOutline(task, student);
-    console.log(`[Session] Outline generated: ${outline.beats?.length} beats for "${task.topic}"`);
+    const generated = await generateOutline(task, student);
+    scenario = generated.scenario ?? null;
+    outline = { beats: generated.beats };
+    console.log(`[Session] Outline generated: ${outline.beats?.length} beats, scenario: ${!!scenario}, for "${task.topic}"`);
   } catch (e) {
     console.error('[Session] Outline generation failed (will use fallback prompt):', e.message);
   }
 
   const ins = await db.execute({
-    sql: 'INSERT INTO sessions (task_id, student_name, level, interests, learning_style, outline) VALUES (?, ?, ?, ?, ?, ?)',
-    args: [task_id, student_name, level, JSON.stringify(interests || []), learning_style, outline ? JSON.stringify(outline) : null],
+    sql: 'INSERT INTO sessions (task_id, student_name, level, interests, learning_style, outline, scenario) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    args: [task_id, student_name, level, JSON.stringify(interests || []), learning_style, outline ? JSON.stringify(outline) : null, scenario ? JSON.stringify(scenario) : null],
   });
 
   res.json({
     session_id:    Number(ins.lastInsertRowid),
     first_message: `Hi ${student_name}! I'm ${task.persona_name || 'Alex'}. Great to meet you!`,
     outline_beats: outline?.beats?.length ?? 0,
+    scenario,
   });
 });
 

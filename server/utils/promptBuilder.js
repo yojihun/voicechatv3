@@ -1,4 +1,4 @@
-function buildSystemPrompt(task, student, turnCount = 0, speechSpeed = 'normal', currentBeat = null) {
+function buildSystemPrompt(task, student, turnCount = 0, speechSpeed = 'normal', currentBeat = null, scenario = null) {
   const objectives  = JSON.parse(task.objectives     || '[]');
   const vocabulary  = JSON.parse(task.vocabulary     || '[]');
   const langForms   = JSON.parse(task.language_forms || '[]');
@@ -83,11 +83,22 @@ ${vocabList.length ? `Vocabulary still to cover: ${vocabList.join(', ')}` : ''}
 ${langForms.length ? `Language forms to elicit: ${langForms.join(', ')}` : ''}`;
   }
 
+  const scenarioBlock = scenario ? `━━━ ROLE-PLAY SCENARIO ━━━
+You are playing: ${scenario.ai_role}
+${student.student_name} is playing: ${scenario.student_role}
+Situation: ${scenario.situation}
+${student.student_name}'s goal: ${scenario.student_goal}
+
+Stay in character throughout. Drive the conversation naturally so ${student.student_name} can work toward their goal through authentic language use.
+When ${student.student_name} has fully achieved their goal, conclude the role-play warmly and naturally (e.g. "That sounds like a great plan! I think you've made the right choice."), then append exactly this marker on a new line: <<TASK_COMPLETE>>
+
+` : '';
+
   return `You are ${persona}${task.persona_description ? ` — ${task.persona_description}` : ', a warm and genuinely curious person'}. Think of yourself as a knowledgeable friend who loves real conversation — not a teacher, not a tutor.
 
 You are talking with ${student.student_name}, a Korean EFL learner at ${level} level.${interests.length ? ` Interests: ${interests.join(', ')}.` : ''}
 
-${phaseBlock}
+${scenarioBlock}${phaseBlock}
 
 ━━━ SLA TECHNIQUES (apply naturally, never mechanically) ━━━
 

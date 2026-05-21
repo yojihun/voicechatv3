@@ -36,6 +36,7 @@ export default function StudentHome({ onStartChat, onBack }) {
   const [interests, setInterests] = useState('');
   const [learningStyle, setLearningStyle] = useState('auditory');
   const [error, setError] = useState('');
+  const [pendingSession, setPendingSession] = useState(null);
 
   const level = LEVELS[levelIdx].value;
 
@@ -51,21 +52,31 @@ export default function StudentHome({ onStartChat, onBack }) {
     setStep(4);
     setError('');
     try {
-      const { session_id, first_message } = await startSession({
+      const data = await startSession({
         task_id: selectedTask.id,
         student_name: name,
         level,
         interests: interests.split(',').map(s => s.trim()).filter(Boolean),
         learning_style: learningStyle,
       });
-      onStartChat({
-        sessionId: session_id, firstMessage: first_message,
-        task: selectedTask, studentName: name, speechSpeed, voiceId,
-      });
+      setPendingSession(data);
+      setStep(5);
     } catch (e) {
       setError(e.message);
       setStep(3);
     }
+  }
+
+  function handleLaunchChat() {
+    onStartChat({
+      sessionId: pendingSession.session_id,
+      firstMessage: pendingSession.first_message,
+      task: selectedTask,
+      studentName: name,
+      speechSpeed,
+      voiceId,
+      scenario: pendingSession.scenario ?? null,
+    });
   }
 
   if (step === 4) return (
@@ -77,6 +88,43 @@ export default function StudentHome({ onStartChat, onBack }) {
       </div>
     </div>
   );
+
+  if (step === 5 && pendingSession) {
+    const sc = pendingSession.scenario;
+    return (
+      <div className="page-center">
+        <div className="student-card briefing-card">
+          <div className="briefing-header">
+            <span className="material-symbols-outlined fill briefing-icon">assignment_ind</span>
+            <h2>Your Mission</h2>
+          </div>
+          {sc ? (
+            <div className="briefing-rows">
+              <div className="briefing-row">
+                <span className="briefing-row-label">Your role</span>
+                <span className="briefing-row-value">{sc.student_role}</span>
+              </div>
+              <div className="briefing-row">
+                <span className="briefing-row-label">The situation</span>
+                <span className="briefing-row-value">{sc.situation}</span>
+              </div>
+              <div className="briefing-row goal-row">
+                <span className="briefing-row-label">Your goal</span>
+                <span className="briefing-row-value">{sc.student_goal}</span>
+              </div>
+            </div>
+          ) : (
+            <p className="step-sub">Have a conversation with {selectedTask?.persona_name || 'Alex'} about {selectedTask?.topic || selectedTask?.title}.</p>
+          )}
+          <p className="briefing-hint">Speak naturally to accomplish your goal. Good luck!</p>
+          <button className="btn primary" onClick={handleLaunchChat}>
+            <span className="material-symbols-outlined">mic</span>
+            Start Conversation
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-center">
